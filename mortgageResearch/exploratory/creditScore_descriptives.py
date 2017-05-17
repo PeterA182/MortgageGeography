@@ -5,17 +5,15 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 
-sys.path.append("/Users/paltamura/Desktop/fmData/fmData/Load/")
+sys.path.append("/Users/peteraltamura/Documents/GitHub/mortgageResearch/mortgageResearch/Load")
 from load_loans import load_data
-
-sys.path.append("/Users/paltamura/Desktop/fmData/fmData/Load/")
 from reference import (
     originationFileColList, monthlyFileColList, compress_columns
 )
 
 
 # Define out Variables
-sample_dir = "/Users/paltamura/Desktop/fmData/fmData/Data/" \
+sample_dir = "/Users/peteraltamura/Documents/GitHub/mortgageResearch/Data/" \
              "historical_data1_Q12016/"
 sample_file = "historicalData1_Q12016.csv"
 sample_file_monthly = "historicalDataMonthly1_Q12016.csv"
