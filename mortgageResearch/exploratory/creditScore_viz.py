@@ -36,7 +36,7 @@ if __name__ == "__main__":
     print df_origination.columns
 
     # Overall Credit Score Distribution
-    plt.figure(1)
+    plt.figure(1, figsize=(12, 14))
     plt.hist(pd.Series(df_origination['creditScore']))
     plt.title('Credit Score Distribution')
     plt.xlabel('Credit Score')
@@ -46,12 +46,13 @@ if __name__ == "__main__":
     fig_all.savefig(figure_dir + 'All Credit Score Dist.png')
 
     # Credit Score Distribution by Lender
-    plt.figure(2)
+    plt.figure(2, figsize=(12, 14))
     df_lender = df_origination[['servicerName', 'creditScore']]
     for lender in list(set(df_lender['servicerName'])):
         plt.hist(pd.Series(list(df_lender.loc[df_lender['servicerName'] == lender, :]['creditScore'])),
-                 label=str(lender))
-    plt.legend()
+                 label=str(lender),
+                 alpha=0.7)
+    plt.legend(prop={'size': 16})
     plt.title('Credit Score Distribution by Lender')
     plt.xlabel('Credit Score')
     plt.ylabel('Frequency within Lender')
