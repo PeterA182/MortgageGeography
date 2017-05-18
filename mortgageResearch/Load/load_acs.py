@@ -55,4 +55,5 @@ if __name__ == "__main__":
         data_dict_path='/Users/peteraltamura/Documents/GitHub/'
                        'mortgageResearch/Data/dataDictionary.xlsx'
     )
-    print df.head()
+    print df.columns
+    print df.head(20)
