@@ -56,4 +56,4 @@ if __name__ == "__main__":
                        'mortgageResearch/Data/dataDictionary.xlsx'
     )
     print df.columns
-    print df.head(20)
+    print df.head(10)
