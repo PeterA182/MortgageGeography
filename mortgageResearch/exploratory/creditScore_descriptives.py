@@ -5,7 +5,10 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 
-sys.path.append("/Users/peteraltamura/Documents/GitHub/mortgageResearch/mortgageResearch/Load")
+sys.path.append(
+    "/Users/peteraltamura/Documents/GitHub/"
+    "mortgageResearch/mortgageResearch/Load"
+)
 from load_loans import load_data
 from reference import (
     originationFileColList, monthlyFileColList, compress_columns
@@ -20,6 +23,10 @@ sample_file_monthly = "historicalDataMonthly1_Q12016.csv"
 
 
 def lender_PerformanceByMSA():
+    """
+
+    :return:
+    """
 
     # Load in from CSV
     df_origination = load_data(
@@ -97,7 +104,6 @@ def lender_CreditScoreSelection():
         columns=originationFileColList,
         date_col_fmt_dict={'firstPaymentDate': '%Y%m'}
     )
-    print df_origination.columns
 
     df_origination.loc[:, 'creditScore'] = \
         pd.to_numeric(df_origination['creditScore'])
@@ -148,17 +154,20 @@ def lender_CreditScoreSelection():
     df_loan['creditScoreOutlier_under'] = 0
     df_loan.loc[msk, 'creditScoreOutlier_under'] = 1
 
-    return df_loan
+    df_loan['year'] = df_loan.loc[:, 'firstPaymentDate'].dt.year
+
+
 
 
 
 
 if __name__ == "__main__":
-    lender_by_msa = lender_PerformanceByMSA()
-    print lender_by_msa
 
+    # Load MSA level performance by Lender
+    lender_by_msa = lender_PerformanceByMSA()
+
+    # Load performance by Lender
     lender_by_loan = lender_CreditScoreSelection()
-    print lender_by_loan
 
     print lender_by_loan['creditScoreOutlier_over'].mean()
     print lender_by_loan['creditScoreOutlier_under'].mean()
