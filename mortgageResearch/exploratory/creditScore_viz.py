@@ -14,33 +14,33 @@ from reference import (
     originationFileColList, monthlyFileColList, compress_columns
 )
 
+sys.path.append(
+    "/Users/peteraltamura/Documents/GitHub/"
+        "mortgageResearch/mortgageResearch/configs/"
+)
+from config import configs
+
+
 # Sample or Full
 sample_run = True
 
-# Single Dataset Dirs
-figure_dir = '/Users/peteraltamura/Documents/GitHub/mortgageResearch/Figs/'
-sample_single_dir = "/Users/peteraltamura/Documents/GitHub/" \
-                    "mortgageResearch/Data/single/"
-sample_single_file = "historical_data1_Q12016.txt"
-
-# Monthly Dataset Dirs
-sample_monthly_dir = '/Users/peteraltamura/Documents/GitHub/' \
-                     'mortgageResearch/Data/monthly/"'
-sample_file_monthly = "historicalDataMonthly1_Q12016.txt"
+# Data Sources
+source = 'freddie'
+census_source = 'acs'
 
 
 if __name__ == "__main__":
 
-    if not os.path.exists(figure_dir):
-        os.makedirs(figure_dir)
+    if not os.path.exists(configs[source]['figure_dir']):
+        os.makedirs(configs[source]['figure_dir'])
 
     # Determine files to read in
     if sample_run:
 
         # Needs parser for pandas.io.common.CParserError 16364
         df_origination = load_data(
-            path=sample_single_dir,
-            filename=sample_single_file,
+            path=configs[source]['sample_single_dir'],
+            filename=configs[source]['sample_single_file'],
             columns=originationFileColList,
             nrows=None,
             date_col_fmt_dict={'firstPaymentDate': '%Y%m'},
@@ -51,12 +51,12 @@ if __name__ == "__main__":
     # Append all otherwise
     elif not sample_run:
         df_origination = pd.DataFrame()
-        for path in glob.glob(sample_single_dir + '*.txt'):
+        for path in glob.glob(configs[source]['sample_single_dir'] + '*.txt'):
             df_origination = pd.concat(
                 [df_origination,
                 load_data(
-                    path=sample_single_dir,
-                    filename=sample_single_file,
+                    path=configs[source]['sample_single_dir'],
+                    filename=configs[source]['sample_single_file'],
                     columns=originationFileColList,
                     nrows=None,
                     date_col_fmt_dict={'firstPaymentDate': '%Y%m'},
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     plt.ylabel('Frequency')
     fig_all = plt.gcf()
     fig_all.show()
-    fig_all.savefig(figure_dir + 'All Credit Score Dist.png')
+    fig_all.savefig(configs[source]['figure_dir'] + 'All Credit Score Dist.png')
 
     # Credit Score Distribution by Lender
     plt.figure(2, figsize=(100, 14))
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     plt.ylabel('Frequency within Lender')
     fig_lender = plt.gcf()
     fig_lender.show()
-    fig_lender.savefig(figure_dir + 'Credit Score Dist by Lender.png')
+    fig_lender.savefig(configs[source]['figure_dir'] + 'Credit Score Dist by Lender.png')
 
     # Create Lender Trend of Avg Credit Score over time
 
