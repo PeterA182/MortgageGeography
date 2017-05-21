@@ -15,7 +15,7 @@ from reference import (
 )
 
 # Sample or Full
-sample_run = False
+sample_run = True
 
 # Single Dataset Dirs
 figure_dir = '/Users/peteraltamura/Documents/GitHub/mortgageResearch/Figs/'
