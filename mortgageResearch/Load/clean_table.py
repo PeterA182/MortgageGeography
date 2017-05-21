@@ -19,7 +19,6 @@ def clean_observations(source, table):
 
     # Source determination for following source-specific process
     if source.lower() in ['fannie', 'freddie']:
-        print "Source: {}".format(source.lower())
 
         # Remove null creditScore observations
         msk = (table['creditScore'].notnull())
@@ -45,7 +44,6 @@ def clean_observations(source, table):
                 print AE
                 msk = (table[dd].apply(lambda x: len(str(x))).isin([5, 6]))
                 table = table.loc[msk, :]
-        print set([x for x in table['firstPaymentDate']])
 
         # Return
         return table
@@ -57,3 +55,7 @@ def clean_observations(source, table):
         raise Exception(
             "'source' argument is unknown.\n"
             "Please enter known source or update cleanining method")
+
+
+if __name__ == "__main__":
+    pass
