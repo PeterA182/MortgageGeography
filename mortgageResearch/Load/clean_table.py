@@ -25,6 +25,9 @@ def clean_observations(source, table):
         msk = (table['creditScore'].notnull())
         table = table.loc[msk, :]
 
+        # Assert that creditScore is 2 or 3 chars and all are integers
+        table = table.loc[~(table['creditScore'].str.contains(' ')), :]
+
         # Ensure all remaining creditScores are possible
         table.loc[:, 'creditScore'] = table['creditScore'].astype(int)
         msk = (table['creditScore'].apply(lambda x: len(str(x))).isin([2, 3]))
@@ -37,7 +40,7 @@ def clean_observations(source, table):
         date_cols = ['firstPaymentDate']
         for dd in date_cols:
             try:
-                assert all([len(x) in [5, 6] for x in set(table[dd])])
+                assert all([len(str(x)) in [5, 6] for x in set(table[dd])])
             except AssertionError as AE:
                 print AE
                 msk = (table[dd].apply(lambda x: len(str(x))).isin([5, 6]))
