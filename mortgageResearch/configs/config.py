@@ -12,6 +12,5 @@ configs = {
         'export_dir': '/Users/peteraltamura/Documents/GitHub/mortgageResearch/Data/',
         'export_file': 'acs_export.csv'
     }
-    
 }
 
