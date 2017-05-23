@@ -1,6 +1,6 @@
 configs = {
     'freddie': {
-        'figure_dir': '/Users/peteraltamura/Documents/GitHub/mortgageResearch/Figs/',
+        'figure_dir': '/Users/peteraltamura/Documents/GitHub/mortgageResearch/Figures/',
         'sample_single_dir': "/Users/peteraltamura/Documents/GitHub/"
                     "mortgageResearch/Data/single/",
         'sample_single_file': "historical_data1_Q12016.txt",
