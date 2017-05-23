@@ -33,6 +33,15 @@ agg_level = 'Month'
 make_figs = True
 aggs = ['count', 'mean', 'std', 'var', 'min', 'max']
 
+agg_to_title = {
+    'count': 'Volume',
+    'mean': 'Average',
+    'std': 'Standard Deviation',
+    'var': 'Variance',
+    'min': 'Minimum',
+    'max': 'Maximum'
+}
+
 
 if __name__ == "__main__":
 
@@ -120,7 +129,9 @@ if __name__ == "__main__":
                 plt.subplot(2, 3, 1+aggs.index(mtr))
                 plt.plot(perf[agg_level], perf['creditScore_{}'.format(mtr)],
                          label='{}'.format(mtr.title()))
-                plt.title("{}".format(mtr))
+                plt.gca().xaxis.set_major_formatter(
+                    mdates.DateFormatter('%m-%Y'))
+                plt.title("{}".format(agg_to_title[mtr]))
                 plt.xticks(rotation='45')
                 plt.xlabel("{}".format(agg_level))
                 plt.ylabel("Credit Score {}".format(mtr.title()))
@@ -175,6 +186,8 @@ if __name__ == "__main__":
                        figsize=(10, 10))
             plt.plot(perf[agg_level], perf['Coef_var'],
                      label='{}'.format('Coefficient of Variation'.title()))
+            plt.gca().xaxis.set_major_formatter(
+                mdates.DateFormatter('%m-%Y'))
             plt.title("Coefficient of Variation")
             plt.xticks(rotation='45')
             plt.xlabel("{}".format(agg_level))
