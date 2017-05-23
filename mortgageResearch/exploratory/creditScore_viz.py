@@ -22,7 +22,7 @@ from config import configs
 
 
 # Sample or Full
-sample_run = True
+sample_run = False
 
 # Data Sources
 source = 'freddie'
@@ -39,8 +39,8 @@ if __name__ == "__main__":
 
         # Needs parser for pandas.io.common.CParserError 16364
         df_origination = load_data(
-            path=configs[source]['sample_single_dir'],
-            filename=configs[source]['sample_single_file'],
+            path=configs[source]['sample_single_dir'] +
+                 configs[source]['sample_single_file'],
             columns=originationFileColList,
             nrows=None,
             date_col_fmt_dict={'firstPaymentDate': '%Y%m'},
@@ -52,16 +52,18 @@ if __name__ == "__main__":
     elif not sample_run:
         df_origination = pd.DataFrame()
         for path in glob.glob(configs[source]['sample_single_dir'] + '*.txt'):
+            print "Loading file: {}".format(path)
             df_origination = pd.concat(
-                [df_origination,
-                load_data(
-                    path=configs[source]['sample_single_dir'],
-                    filename=configs[source]['sample_single_file'],
-                    columns=originationFileColList,
-                    nrows=None,
-                    date_col_fmt_dict={'firstPaymentDate': '%Y%m'},
-                    error_bad_lines=True
-                )],
+                [
+                    df_origination,
+                    load_data(
+                        path=path,
+                        columns=originationFileColList,
+                        nrows=None,
+                        date_col_fmt_dict={'firstPaymentDate': '%Y%m'},
+                        error_bad_lines=True
+                    )
+                ],
                 axis=0
             )
 
