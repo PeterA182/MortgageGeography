@@ -25,7 +25,7 @@ def clean_observations(source, table):
         table = table.loc[msk, :]
 
         # Assert that creditScore is 2 or 3 chars and all are integers
-        table = table.loc[~(table['creditScore'].str.contains(' ')), :]
+        table = table.loc[~(table['creditScore'].str.contains(' ', na=False)), :]
 
         # Ensure all remaining creditScores are possible
         table.loc[:, 'creditScore'] = table['creditScore'].astype(int)
