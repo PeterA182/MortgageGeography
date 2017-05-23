@@ -1,5 +1,5 @@
 import sys
-import os
+import glob
 
 import pandas as pd
 import numpy as np
@@ -14,12 +14,19 @@ from reference import (
     originationFileColList, monthlyFileColList, compress_columns
 )
 
+sys.path.append(
+    "/Users/peteraltamura/Documents/GitHub/"
+        "mortgageResearch/mortgageResearch/configs/"
+)
+from config import configs
 
-# Define out Variables
-sample_dir = "/Users/peteraltamura/Documents/GitHub/mortgageResearch/Data/" \
-             "historical_data1_Q12016/"
-sample_file = "historicalData1_Q12016.csv"
-sample_file_monthly = "historicalDataMonthly1_Q12016.csv"
+# ---- ---- ----      ---- ---- ----      ---- ---- ----      ---- ---- ----
+# Sample or Full
+sample_run = False
+
+# Data Sources
+source = 'freddie'
+census_source = 'acs'
 
 
 def lender_PerformanceByMSA():
@@ -29,16 +36,30 @@ def lender_PerformanceByMSA():
     """
 
     # Load in from CSV
-    df_origination = load_data(
-        path=sample_dir,
-        filename=sample_file,
-        columns=originationFileColList,
-        date_col_fmt_dict={'firstPaymentDate': '%Y%m'}
-    )
-    print df_origination.columns
-
-    df_origination.loc[:, 'creditScore'] = \
-        pd.to_numeric(df_origination['creditScore'])
+    if sample_run:
+        df_origination = load_data(
+            path=configs[source]['sample_dir']+
+                 configs[source]['sample_file'],
+            columns=originationFileColList,
+            date_col_fmt_dict={'firstPaymentDate': '%Y%m'}
+        )
+    elif not sample_run:
+        df_origination = pd.DataFrame()
+        for path in glob.glob(configs[source]['sample_single_dir'] + '*.txt'):
+            print "Loading File: {}".format(path)
+            df_origination = pd.concat(
+                [
+                    df_origination,
+                     load_data(
+                         path=path,
+                         columns=originationFileColList,
+                         nrows=None,
+                         date_col_fmt_dict={'firstPaymentDate': '%Y%m'},
+                         error_bad_lines=True
+                     )
+                ],
+                axis=0
+            )
 
     # Credit Score Spread by MSA
     df_msa_to_score = df_origination.groupby(
@@ -98,12 +119,31 @@ def lender_CreditScoreSelection():
     """
 
     # Load in from CSV
-    df_origination = load_data(
-        path=sample_dir,
-        filename=sample_file,
-        columns=originationFileColList,
-        date_col_fmt_dict={'firstPaymentDate': '%Y%m'}
-    )
+    # Load in from CSV
+    if sample_run:
+        df_origination = load_data(
+            path=configs[source]['sample_dir'] +
+                 configs[source]['sample_file'],
+            columns=originationFileColList,
+            date_col_fmt_dict={'firstPaymentDate': '%Y%m'}
+        )
+    elif not sample_run:
+        df_origination = pd.DataFrame()
+        for path in glob.glob(configs[source]['sample_single_dir'] + '*.txt'):
+            print "Loading File: {}".format(path)
+            df_origination = pd.concat(
+                [
+                    df_origination,
+                    load_data(
+                        path=path,
+                        columns=originationFileColList,
+                        nrows=None,
+                        date_col_fmt_dict={'firstPaymentDate': '%Y%m'},
+                        error_bad_lines=True
+                    )
+                ],
+                axis=0
+            )
 
     df_origination.loc[:, 'creditScore'] = \
         pd.to_numeric(df_origination['creditScore'])
@@ -156,9 +196,7 @@ def lender_CreditScoreSelection():
 
     df_loan['year'] = df_loan.loc[:, 'firstPaymentDate'].dt.year
 
-
-
-
+    return df_loan
 
 
 if __name__ == "__main__":
