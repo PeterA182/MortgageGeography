@@ -3,6 +3,12 @@ import numpy as np
 import os
 import sys
 
+sys.path.append(
+    "/Users/peteraltamura/Documents/GitHub/"
+        "mortgageResearch/mortgageResearch/configs/"
+)
+from config import configs
+
 
 # Pandas IO / Col List from FAQ User Guide
 def load_acs(path, filename, nrows='sample',
@@ -48,12 +54,4 @@ def load_acs(path, filename, nrows='sample',
 
 
 if __name__ == "__main__":
-
-    df = load_acs(
-        path='/Users/peteraltamura/Documents/GitHub/mortgageResearch/Data/',
-        filename='acs_export.csv',
-        data_dict_path='/Users/peteraltamura/Documents/GitHub/'
-                       'mortgageResearch/Data/dataDictionary.xlsx'
-    )
-    print df.columns
-    print df.head(10)
+    pass
