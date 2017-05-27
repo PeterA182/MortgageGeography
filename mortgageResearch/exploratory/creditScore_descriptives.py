@@ -38,8 +38,8 @@ def lender_PerformanceByMSA():
     # Load in from CSV
     if sample_run:
         df_origination = load_data(
-            path=configs[source]['sample_dir']+
-                 configs[source]['sample_file'],
+            path=configs[source]['sample_single_dir']+
+                 configs[source]['sample_single_file'],
             columns=originationFileColList,
             date_col_fmt_dict={'firstPaymentDate': '%Y%m'}
         )
