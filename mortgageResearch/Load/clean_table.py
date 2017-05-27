@@ -21,29 +21,30 @@ def clean_observations(source, table):
     if source.lower() in ['fannie', 'freddie']:
 
         # Remove null creditScore observations
-        msk = (table['creditScore'].notnull())
-        table = table.loc[msk, :]
+        if 'creditScore' in list(table.columns):
+            msk = (table['creditScore'].notnull())
+            table = table.loc[msk, :]
 
-        # Assert that creditScore is 2 or 3 chars and all are integers
-        table = table.loc[~(table['creditScore'].str.contains(' ', na=False)), :]
+            # Assert that creditScore is 2 or 3 chars and all are integers
+            table = table.loc[~(table['creditScore'].str.contains(' ', na=False)), :]
 
-        # Ensure all remaining creditScores are possible
-        table.loc[:, 'creditScore'] = table['creditScore'].astype(int)
-        msk = (table['creditScore'].apply(lambda x: len(str(x))).isin([2, 3]))
-        table = table.loc[msk, :]
+            # Ensure all remaining creditScores are possible
+            table.loc[:, 'creditScore'] = table['creditScore'].astype(int)
+            msk = (table['creditScore'].apply(lambda x: len(str(x))).isin([2, 3]))
+            table = table.loc[msk, :]
 
-        # Ensure all chars in remaining creditScore observations are integers
-        assert all([type(x) == np.int64 for x in set(table['creditScore'])])
+            # Ensure all chars in remaining creditScore observations are integers
+            assert all([type(x) == np.int64 for x in set(table['creditScore'])])
 
-        # Ensure all dates remaining in table are parse-able
-        date_cols = ['firstPaymentDate']
-        for dd in date_cols:
-            try:
-                assert all([len(str(x)) in [5, 6] for x in set(table[dd])])
-            except AssertionError as AE:
-                print AE
-                msk = (table[dd].apply(lambda x: len(str(x))).isin([5, 6]))
-                table = table.loc[msk, :]
+            # Ensure all dates remaining in table are parse-able
+            date_cols = ['firstPaymentDate']
+            for dd in date_cols:
+                try:
+                    assert all([len(str(x)) in [5, 6] for x in set(table[dd])])
+                except AssertionError as AE:
+                    print AE
+                    msk = (table[dd].apply(lambda x: len(str(x))).isin([5, 6]))
+                    table = table.loc[msk, :]
 
         # Return
         return table
