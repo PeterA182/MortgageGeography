@@ -40,6 +40,7 @@ def load_data(path, nrows=None, columns=None, years=None, quarters=None,
         )
 
     # Assign columns if not in file already
+    print df_data.head(20)
     if columns:
         df_data.columns = columns
         print (" "*10) + "{} :: Columns assigned".format(
