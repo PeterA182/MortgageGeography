@@ -94,6 +94,8 @@ if __name__ == "__main__":
         if len(df_monthly.loc[df_monthly[col].isnull(), :]) == \
                 len(df_monthly):
             df_monthly.drop(labels=[col], axis=1, inplace=True)
+            print "Column: {} was dropped due to containing all null values".\
+                format(str(col))
 
     # ---- ---- ----      ---- ---- ----      ---- ---- ----
     #

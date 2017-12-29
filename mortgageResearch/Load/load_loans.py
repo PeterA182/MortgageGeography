@@ -1,5 +1,6 @@
 import os
 import sys
+import glob
 
 import datetime as dt
 import pandas as pd
@@ -40,7 +41,6 @@ def load_data(path, nrows=None, columns=None, years=None, quarters=None,
         )
 
     # Assign columns if not in file already
-    print df_data.head(20)
     if columns:
         df_data.columns = columns
         print (" "*10) + "{} :: Columns assigned".format(
@@ -83,6 +83,69 @@ def load_data(path, nrows=None, columns=None, years=None, quarters=None,
 
     # Return
     return df_data
+
+
+def load_origination(sample_run, configs, source, col_list):
+    """
+    Loads 
+    
+    :param sample_run: 
+    :return: 
+    """
+    # Load in from CSV
+    if sample_run:
+        df_origination = load_data(
+            path=configs[source]['sample_single_dir'] +
+                 configs[source]['sample_single_file'],
+            columns=col_list,
+            date_col_fmt_dict={'firstPaymentDate': '%Y%m'}
+        )
+
+    elif not sample_run:
+        df_origination = pd.DataFrame()
+        for path in glob.glob(configs[source]['sample_single_dir'] + '*.txt'):
+            print "Loading File: {}".format(path)
+            df_origination = pd.concat(
+                [
+                    df_origination,
+                    load_data(
+                        path=path,
+                        columns=col_list,
+                        nrows=None,
+                        date_col_fmt_dict={'firstPaymentDate': '%Y%m'},
+                        error_bad_lines=True
+                    )
+                ],
+                axis=0
+            )
+
+    else:
+        raise Exception("Please select 'sample_run' as bool")
+
+    return df_origination
+
+
+def load_monthly(sample_run, configs, source, col_list, most_recent=True):
+    """
+    Loads 
+
+    :param sample_run: 
+    :return: 
+    """
+
+    # Load in from CSV
+    if sample_run:
+        df_monthly = load_data(
+            path=configs[source]['sample_monthly_dir'] +
+                 configs[source]['sample_monthly_file'],
+            columns=col_list,
+            date_col_fmt_dict={'firstPaymentDate': '%Y%m'}
+        )
+
+    else:
+        Exception("Run in 'sample_run' mode")
+
+    return df_monthly
 
 
 if __name__ == "__main__":

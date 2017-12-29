@@ -163,7 +163,7 @@ if __name__ == "__main__":
     # Unpack Prepay Penalty
     msk = (df_origination['prepayPenaltyMtgFlag'] == 'Y')
     df_origination.loc[msk, 'prepayPenaltyMtgFlag'] = 1
-    df_origination.loc[~msk, 'prepayPenaltyMtgFlag'] = 0
+    df_origination.loc[df_origination['prepayPenaltyMtgFlag'] != 1, 'prepayPenaltyMtgFlag'] = 0
 
     # Unpack super conforming flag
     msk = (df_origination['superConformingFlag'] == 'Y')
@@ -186,14 +186,11 @@ if __name__ == "__main__":
         columns=renamingDict,
         inplace=True
     )
-    print df_origination['tpoChannel_origination'].value_counts()
 
     # Remove any column not named by the columns list
     # (mismatch to online DataDict)
     for col in list(df_origination.columns):
         if 'Unnamed' in col or 'nknown' in col or col == '':
             df_origination.drop(labels=[col], axis=1, inplace=True)
-
-    print df_origination['tpoChannel_origination'].value_counts()
 
     df_origination.to_csv(prepped_outpath + 'preppedFeatureTable_origination.csv')

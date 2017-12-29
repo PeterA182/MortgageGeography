@@ -9,6 +9,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
 
 sys.path.append(
     "/Users/peteraltamura/Documents/GitHub/"
@@ -37,8 +38,10 @@ add time sensitive metrics / flags for past statuses
 sample_run = True
 timePeriod = 'Q42015'
 source = 'freddie'
-random_forest = True
+random_forest = False
 logistic_regression = False
+kneighbors = True
+performance_dict = {}
 
 prepped_outpath = '/Users/peteraltamura/Documents/GitHub/' \
                   'mortgageResearch/Data/monthly/preppedFeatures/'
@@ -50,11 +53,17 @@ y_raw = pd.read_csv(prepped_outpath + 'featureSelectionFinal_Y.csv')
 
 # Prep for Model
 train_df, test_df, train_y, test_y = train_test_split(x_raw, y_raw)
+testLoanSeqNumbers = test_df['loanSeqNumber']
 
 # Handle ID Col
-train_df.drop(labels=['loanSeqNumber'], axis=1, inplace=True)
-testLoanSeqNumbers = test_df['loanSeqNumber']
-test_df.drop(labels=['loanSeqNumber'], axis=1, inplace=True)
+train_df.drop(labels=['loanSeqNumber',
+                      'delinquencyFlag_mostRecentMth'],
+              axis=1,
+              inplace=True)
+test_df.drop(labels=['loanSeqNumber',
+                     'delinquencyFlag_mostRecentMth'],
+             axis=1,
+             inplace=True)
 
 train_df = np.array(train_df)
 test_df = np.array(test_df)
@@ -68,6 +77,7 @@ test_y = np.array(test_y)
 # Random Forest
 # Model Fit
 if random_forest:
+    print "Random Forest Model: Training"
     rf = RandomForestClassifier(n_estimators=1000)
     rf.fit(train_df, train_y)
 
@@ -77,12 +87,25 @@ if random_forest:
 
 # Model Fit
 if logistic_regression:
+    print "Logistic Regression Model: Training"
     logisticRegression = LogisticRegression()
     logisticRegression.fit(train_df, train_y)
 
     # Predict
     resp = logisticRegression.predict(test_df)
 
+if kneighbors:
+    print "KNearest Neighbor Model: Training"
+    for nn in range(1, 11):
+        knn = KNeighborsClassifier(n_neighbors=nn,
+                                   weights='uniform',
+                                   algorithm='auto')
+        knn.fit(train_df, train_y)
+
+        # Predict
+        resp = knn.predict(test_df)
+        sc = knn.score(test_df, test_y)
+        performance_dict.update({nn: sc})
 
 # Results
 df_results = pd.DataFrame({
@@ -90,7 +113,9 @@ df_results = pd.DataFrame({
     'test_y': list(test_y),
     'predictedValue': list(resp)
 })
-
+df_results.to_csv(prepped_outpath + 'df_results_{}_.csv'.format(
+    'randomForestClassifier' if random_forest else 'logRegressionClassifier'
+))
 
 
 
