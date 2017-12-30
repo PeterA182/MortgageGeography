@@ -40,7 +40,7 @@ dmap = {
     '4': '120_149days delinquent',
     '5': '150_179days_delinquent',
     '6': '180_209days_delinquent',
-    '7': 'acquired'
+    '7': '210_plus'
 }
 
 
@@ -105,6 +105,8 @@ if __name__ == "__main__":
 
     # origUPB
     df_monthly.loc[:, 'currUPB'] = df_monthly['currUPB'].astype(float)
+    df_monthly.loc[:, 'currUPB'].fillna(np.nanmedian(df_monthly['currUPB']),
+                                        inplace=True)
     all_col_list.append('currUPB')
     update_log(action="'Formatted 'origUPB' field")
 
@@ -115,6 +117,7 @@ if __name__ == "__main__":
         )
     df_monthly.loc[:, 'currLoanDelinqStatus'] = \
         df_monthly['currLoanDelinqStatus'].astype(float)
+    df_monthly.loc[:, 'currLoanDelinqStatus'].fillna(0, inplace=True)
     all_col_list.append('currLoanDelinqStatus')
     update_log(action="Formatted 'currLoanDelinqStatus'")
 
@@ -130,15 +133,17 @@ if __name__ == "__main__":
         'Y': 1,
         'N': 0
     }
-    df_monthly.loc[df_monthly['repurchaseFlag'].isnull(), 'repurchaseFlag'] = 0
     df_monthly.loc[:, 'repurchaseFlag'] = df_monthly['repurchaseFlag'].map(rmap)
+    df_monthly.loc[df_monthly['repurchaseFlag'].isnull(), 'repurchaseFlag'] = 0
     all_col_list.append('repurchaseFlag')
     update_log(action="Formatted and mapped 'repurchaseFlag'")
 
     # modificationFlag
-    df_monthly.loc[df_monthly['modificationFlag'].isnull(),
-                   'modificationFlag'] = 'N'
+    df_monthly.loc[:, 'modificationFlag'] = \
+        df_monthly['modificationFlag'].astype(str)
     df_monthly.loc[df_monthly['modificationFlag'] != 'Y',
+                   'modificationFlag'] = 'N'
+    df_monthly.loc[df_monthly['modificationFlag'].isnull(),
                    'modificationFlag'] = 'N'
     df_monthly.loc[:, 'modificationFlag'] = \
         df_monthly['modificationFlag'].map({'Y': 1, 'N': 0})
@@ -151,11 +156,14 @@ if __name__ == "__main__":
             lambda x: zfill(x, width=2)
         )
     df_monthly.loc[:, 'zeroBalanceCode'] = df_monthly['zeroBalanceCode'].map({
+        '00': 'unknown',
         '01': 'prepaid_matured',
         '03': 'foreclosure_alternative',
         '06': 'repurchase',
         '09': 'REO_disposition'
     })
+    df_monthly.loc[df_monthly['zeroBalanceCode'].isnull(),
+        'zeroBalanceCode'] = '00'
     for s in list(set(df_monthly['zeroBalanceCode'])):
         df_monthly.loc[:, 'zeroBalCode_{}'.format(s)] = 0
         df_monthly.loc[df_monthly['zeroBalanceCode'] == s,
@@ -179,12 +187,20 @@ if __name__ == "__main__":
     # currentInterestRate
     df_monthly.loc[:, 'currInterestRate'] = \
         df_monthly['currInterestRate'].astype(float)
+    df_monthly['currInterestRate'].fillna(
+        np.nanmedian(df_monthly['currInterestRate']),
+        inplace=True
+    )
     all_col_list.append('currInterestRate')
     update_log(action="Formatted 'currInterestRate'")
 
     # Current Deferred UPB
     df_monthly.loc[:, 'currDeferredUPB'] = \
         df_monthly['currDeferredUPB'].astype(float)
+    df_monthly['currDeferredUPB'].fillna(
+        np.nanmedian(df_monthly.currDeferredUPB),
+        inplace=True
+    )
     all_col_list.append(
         'currDeferredUPB'
     )
@@ -204,13 +220,13 @@ if __name__ == "__main__":
     # mtgInsuranceRecovery
     df_monthly.loc[:, 'mtgInsuranceRecovery'] = \
         df_monthly['mtgInsuranceRecovery'].astype(float)
+    df_monthly['mtgInsuranceRecovery'].fillna(0, inplace=True)
     all_col_list.append('mtgInsuranceRecovery')
     update_log(action="Formatted 'mtgInsuranceRecovery'")
 
     # netSalesProceeds
     df_monthly.loc[:, 'netSalesProceeds'] = \
         df_monthly['netSalesProceeds'].astype(str)
-
     # Assign out 'covered'
     df_monthly.loc[:, 'netSalesProceeds_covered'] = 0
     df_monthly.loc[df_monthly['netSalesProceeds'] == 'C',
@@ -223,67 +239,80 @@ if __name__ == "__main__":
                    'netSalesProceeds_unknown'] = 1
     all_col_list.append('netSalesProceeds_unknown')
 
-    df_monthly.loc[:, 'netSalesProceeds'] = \
-        df_monthly['netSalesProceeds'].apply(
-            lambda x: x.replace('U', '0').replace('C', '0')
-        )
-    df_monthly.loc[:, 'netSalesProceeds'] = \
-        df_monthly['netSalesProceeds'].astype(float)
-    all_col_list.append('netSalesProceeds')
-
     # nonMtgInsuranceRecovery
     df_monthly.loc[:, 'nonMtgInsuranceRecovery'] = \
         df_monthly['nonMtgInsuranceRecovery'].astype(float)
+    df_monthly['nonMtgInsuranceRecovery'].fillna(0, inplace=True)
     all_col_list.append('nonMtgInsuranceRecovery')
     update_log(action="Formatted 'nonMtgInsuranceRecovery'")
 
     # Expenses
     df_monthly.loc[:, 'expenses'] = \
         df_monthly['expenses'].astype(float)
+    df_monthly['expenses'].fillna(0, inplace=True)
     all_col_list.append('expenses')
     update_log(action="Formatted 'expenses'")
 
     # Legal Costs
     df_monthly.loc[:, 'legalCosts'] = \
         df_monthly['legalCosts'].astype(float)
+    df_monthly['legalCosts'].fillna(0, inplace=True)
     all_col_list.append('legalCosts')
     update_log(action="Formatted 'legalCosts'")
 
     # maintenancePreservtnCosts
     df_monthly.loc[:, 'maintenancePreservtnCosts'] = \
         df_monthly['maintenancePreservtnCosts'].astype(float)
+    df_monthly['maintenancePreservtnCosts'].fillna(0, inplace=True)
     all_col_list.append('maintenancePreservtnCosts')
     update_log(action="Formatted 'maintenancePreservtnCosts'")
 
     # taxesInsuranceOwed
     df_monthly.loc[:, 'taxesInsuranceOwed'] = \
         df_monthly['taxesInsuranceOwed'].astype(float)
+    df_monthly['taxesInsuranceOwed'].fillna(0, inplace=True)
     all_col_list.append('taxesInsuranceOwed')
     update_log(action="Formatted 'taxesInsuranceOwed'")
 
     # miscExpenses
     df_monthly.loc[:, 'miscExpenses'] = \
         df_monthly['miscExpenses'].astype(float)
+    df_monthly['miscExpenses'].fillna(0, inplace=True)
     all_col_list.append('miscExpenses')
     update_log(action="Formatted 'miscExpenses'")
 
     # actualLossCalculation
     df_monthly.loc[:, 'actualLossCalculation'] = \
         df_monthly['actualLossCalculation'].astype(float)
+    df_monthly['actualLossCalculation'].fillna(0, inplace=True)
     all_col_list.append('actualLossCalculation')
     update_log(action="Formatted 'actualLossCalculation'")
 
     # modificationCost
     df_monthly.loc[:, 'modificationCost'] = \
         df_monthly['modificationCost'].astype(float)
+    df_monthly['modificationCost'].fillna(0, inplace=True)
     all_col_list.append('modificationCost')
     update_log(action="Formatted 'modificationCost'")
 
-    # Send to CSV
-    df_monthly = df_monthly.loc[:, [
-        x for x in df_monthly.columns if x not in all_nulls
-    ]]
+    df_monthly.drop(labels=['Unknown'],
+                    axis=1,
+                    inplace=True)
+
+    # Subset to appropriate columns
     df_monthly = df_monthly.loc[:, all_col_list]
+
+    # Final Check
+    for c in [x for x in df_monthly.columns]:
+        if sum(df_monthly[c].isnull()) > 0:
+            print c
+            print "     {} null observations".format(
+                str(sum(df_monthly[c].isnull()))
+            )
+    print "currUPB sum null"
+    print sum(df_monthly['currUPB'].isnull())
+
+    # Send out CSV and Pickle
     df_monthly.to_csv(d_outpath + mthly_filename + '.csv')
     cPickle.dump(df_monthly,
                  open(d_outpath + mthly_filename + '.p', 'wb'), -1)
