@@ -9,7 +9,11 @@ configs = {
         'sample_monthly_file': "historical_data1_time_Q12016.txt",
         'binned_monthly_dir': "/Users/peteraltamura/Documents/GitHub/"
                               "mortgageResearch/Data/monthly/bins/",
-        'maxBinOccupancy': 10000
+        'maxBinOccupancy': 10000,
+        'monthly_filenames': {'prepped': 'loadedPrepped_monthlyData',
+                              'FE': 'FE_monthlyData'},
+        'origination_filenames': {'prepped': 'loadedPrepped_originationData',
+                                  'FE': 'FE_originationData'}
     },
     'acs': {
         'export_dir': '/Users/peteraltamura/Documents/GitHub/mortgageResearch/Data/',
