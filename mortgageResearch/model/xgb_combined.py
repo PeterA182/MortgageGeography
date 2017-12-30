@@ -157,7 +157,7 @@ if __name__ == "__main__":
     # Extract Feature Importances DataFrame
     feat_imp = pd.DataFrame(model.feature_importances_)
     feat_imp.columns = ['importance_value']
-    feat_imp['Column'] = X_test.columns
+    feat_imp['Feature'] = X_test.columns
 
     # Plot Feature Importances
     pyplot.bar(range(len(model.feature_importances_)),

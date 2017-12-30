@@ -18,15 +18,18 @@ sys.path.append(
 )
 from b_combinedFeatures import combined_filename, idx_cols, delinq_days_min
 
+import os
 import pandas as pd
-
-from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
+from matplotlib import pyplot
 
 # Variables
 test_size = .33
 seed = 7
+model_outpath = d_outpath + 'xgb1_results/'
+if not os.path.exists(model_outpath):
+    os.makedirs(model_outpath)
 
 
 # Methods
@@ -90,9 +93,10 @@ def logisticRegression_model(X_train, Y_train, X_test, Y_test, idx_cols=idx_cols
 
 
 if __name__ == "__main__":
+
     # Read in Data
     df_comb = pd.read_pickle(
-        d_outpath + combined_filename + '.p'
+        d_outpath + origFE_filename + '.p'
     )
 
     # Split Exogenous and Endogenous
@@ -101,18 +105,25 @@ if __name__ == "__main__":
     ]]
     X = df_comb.loc[:,
         [x for x in df_comb.columns if x not in Y.columns]
-    ]
+        ]
     for c in X.columns:
-        print c
-        assert sum(X[c].isnull()) == 0
-    for c in Y.columns:
-        print c
-        assert sum(Y[c].isnull()) == 0
+        if sum(X[c].isnull()) > 0:
+            print c
+
+    # X index
+    print type(idx_cols)
+    print X.columns
+    X_idx = X.loc[:, idx_cols]
+    X = X.loc[:, [x for x in X.columns if x not in idx_cols]]
 
     # Split
     X_train, X_test, Y_train, Y_test = train_test_split(
-        X, Y, test_size=test_size, random_state=seed
+        X, Y,
+        test_size=test_size, random_state=seed
     )
+    for c in X_train.columns:
+        if sum(X_train[c].isnull()) > 0:
+            print c
 
     # Train and Test Model
     print ":: Instantiating and training model ::"
@@ -120,3 +131,16 @@ if __name__ == "__main__":
                                                 Y_train=Y_train,
                                                 X_test=X_test,
                                                 Y_test=Y_test)
+
+    # # Extract Feature Importances DataFrame
+    feat_imp = pd.DataFrame(model.coef_)
+    feat_imp.columns = ['Coefficient']
+    feat_imp['Feature'] = X_test.columns
+
+    # Plot Feature Importances
+    pyplot.bar(range(len(model.feature_importances_)),
+               model.feature_importances_)
+
+    # Send out
+    pyplot.savefig(model_outpath + 'featureImportanceViz.png')
+    df_result.to_csv(model_outpath + 'df_residuals.csv')
