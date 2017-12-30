@@ -27,7 +27,7 @@ from config import configs
 # Run Settings
 d_source = 'freddie'
 d_sample_run = True
-d_outpath = '/Users/peteraltamura/Documents/GitHub/mortgageResearch/output/'
+d_outpath = sys.argv[1]
 origination_filename = 'loadedPrepped_originationData'
 if not os.path.exists(d_outpath):
     os.makedirs(d_outpath)
@@ -262,9 +262,16 @@ if __name__ == "__main__":
 
     # Send to CSV
     df_origination = df_origination.loc[:, all_col_list]
-    df_origination.to_csv(d_outpath + origination_filename + '.csv')
-    cPickle.dump(df_origination,
-                 open(d_outpath + origination_filename + '.p', 'wb'), -1)
+    df_origination.to_csv(
+        d_outpath +
+        configs[d_source]['origination_filenames']['prepped'] +
+        '.csv'
+    )
+    df_origination.to_pickle(
+        configs[d_source]['origination_filenames']['prepped'] +
+        origination_filename +
+        '.pkl'
+    )
     update_log(action='Finished',
                export=True)
 

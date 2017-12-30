@@ -28,7 +28,6 @@ from config import configs
 d_source = 'freddie'
 d_sample_run = True
 d_outpath = '/Users/peteraltamura/Documents/GitHub/mortgageResearch/output/'
-mthly_filename = 'loadedPrepped_monthlyData'
 if not os.path.exists(d_outpath):
     os.makedirs(d_outpath)
 
@@ -313,9 +312,12 @@ if __name__ == "__main__":
     print sum(df_monthly['currUPB'].isnull())
 
     # Send out CSV and Pickle
-    df_monthly.to_csv(d_outpath + mthly_filename + '.csv')
-    cPickle.dump(df_monthly,
-                 open(d_outpath + mthly_filename + '.p', 'wb'), -1)
+    df_monthly.to_csv(d_outpath +
+                      configs[d_source]['monthly_filenames']['prepped'] +
+                      '.csv')
+    df_monthly.to_pickle(d_outpath +
+                         configs[d_source]['monthly_filenames']['prepped'] +
+                         '.pkl')
     update_log(action='Finished',
                export=True)
 
