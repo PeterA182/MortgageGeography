@@ -13,7 +13,8 @@ configs = {
         'monthly_filenames': {'prepped': 'loadedPrepped_monthlyData',
                               'FE': 'FE_monthlyData'},
         'origination_filenames': {'prepped': 'loadedPrepped_originationData',
-                                  'FE': 'FE_originationData'}
+                                  'FE': 'FE_originationData'},
+        'results_dir': 'modelResults/'
     },
     'acs': {
         'export_dir': '/Users/peteraltamura/Documents/GitHub/mortgageResearch/Data/',
