@@ -96,11 +96,15 @@ def logisticRegression_model(X_train, Y_train, X_test, Y_test, idx_cols=idx_cols
     return model, df_result
 
 
+# Variables
+d_outpath = sys.argv[1]
+d_source = sys.argv[2]
+
 if __name__ == "__main__":
 
     # Read in Data
     df_comb = pd.read_pickle(
-        d_outpath + origFE_filename + '.p'
+        d_outpath + configs[d_source]['origination_filenames']['FE'] + '.pkl'
     )
 
     # Split Exogenous and Endogenous
@@ -143,9 +147,18 @@ if __name__ == "__main__":
     coeffTable['Feature'] = X_test.columns
 
     # Send out
-    pyplot.savefig(model_outpath + 'logRegr_coefficientViz.png')
-    df_result.to_csv(model_outpath + 'logRegr_df_residuals.csv')
-    coeffTable.to_csv(model_outpath + 'logRegr_coefTbl.csv')
+    pyplot.savefig(
+        d_outpath + configs[d_source]['results'] +
+        'logRegr_coefficientViz.png'
+    )
+    df_result.to_csv(
+        d_outpath + configs[d_source]['results'] +
+        'logRegr_df_residuals.csv'
+    )
+    coeffTable.to_csv(
+        d_outpath + configs[d_source]['results'] +
+        'logRegr_coefTbl.csv'
+    )
 
     # Print Stats
     print "Percent Match"

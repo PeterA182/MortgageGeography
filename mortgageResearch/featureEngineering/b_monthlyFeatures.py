@@ -39,3 +39,7 @@ if __name__ == "__main__":
     for c in df_monthly.columns:
         if df_monthly[c].dtype not in [object, '<M8[ns]']:
             df_monthly.loc[:, c] = df_monthly[c].astype(float)
+
+    df_monthly.to_pickle(
+        d_outpath + configs[d_source]['monthly_filenames']['FE'] + '.pkl'
+    )

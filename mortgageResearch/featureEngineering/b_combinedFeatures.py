@@ -13,7 +13,7 @@ sys.path.append(
     "mortgageResearch/mortgageResearch/dataPrep/"
 )
 from a_originationLoadPrep import d_outpath, origination_filename
-from a_monthlyLoadPrep import mthly_filename, dmap
+from a_monthlyLoadPrep import dmap
 
 
 # Other
@@ -279,7 +279,6 @@ if __name__ == "__main__":
     for c in df_monthly.columns:
         if df_monthly[c].dtype not in [object, '<M8[ns]']:
             df_monthly.loc[:, c] = df_monthly[c].astype(float)
-    print sum(df_monthly['currUPB'].isnull())
 
     # Read in Origination
     df_origination = pd.read_pickle(
@@ -298,7 +297,6 @@ if __name__ == "__main__":
         df_origination['loanSeqNumber'].isin(match), :]
     df_monthly = df_monthly.loc[
         df_monthly['loanSeqNumber'].isin(match), :]
-    print sum(df_monthly['currUPB'].isnull())
 
     #
     # ---- ---- ----      ---- ---- ----
@@ -322,7 +320,6 @@ if __name__ == "__main__":
         monthly=df_monthly,
         delinq_days_min=delinq_days_min
     )
-    print sum(single_prior_month['currUPB'].isnull())
 
     # Remove created column from monthly once added to origination
     single_prior_month.drop(

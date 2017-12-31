@@ -25,12 +25,9 @@ sys.path.append(
 from config import configs
 
 # Run Settings
-d_source = 'freddie'
 d_sample_run = True
-d_outpath = '/Users/peteraltamura/Documents/GitHub/mortgageResearch/output/'
-if not os.path.exists(d_outpath):
-    os.makedirs(d_outpath)
-
+d_outpath = sys.argv[1]
+d_source = sys.argv[2]
 dmap = {
     '0': '0_29days_delinquent',
     '1': '30_59days delinquent',
@@ -308,18 +305,15 @@ if __name__ == "__main__":
             print "     {} null observations".format(
                 str(sum(df_monthly[c].isnull()))
             )
-    print "currUPB sum null"
-    print sum(df_monthly['currUPB'].isnull())
 
     # Send out CSV and Pickle
-    df_monthly.to_csv(d_outpath +
-                      configs[d_source]['monthly_filenames']['prepped'] +
-                      '.csv')
-    df_monthly.to_pickle(d_outpath +
-                         configs[d_source]['monthly_filenames']['prepped'] +
-                         '.pkl')
+    df_monthly.to_csv(
+        d_outpath +
+        configs[d_source]['monthly_filenames']['prepped'] + '.csv')
+    df_monthly.to_pickle(
+        d_outpath +
+        configs[d_source]['monthly_filenames']['prepped'] + '.pkl'
+    )
     update_log(action='Finished',
                export=True)
-
-    sys.exit()
 

@@ -133,8 +133,6 @@ if __name__ == "__main__":
             print c
 
     # X index
-    print type(idx_cols)
-    print X.columns
     X_idx = X.loc[:, idx_cols]
     X = X.loc[:, [x for x in X.columns if x not in idx_cols]]
 
@@ -143,9 +141,6 @@ if __name__ == "__main__":
         X, Y,
         test_size=test_size, random_state=seed
     )
-    for c in X_train.columns:
-        if sum(X_train[c].isnull()) > 0:
-            print c
 
     # Train and Test Model
     print "::Instantiating and training model ::"
@@ -168,4 +163,3 @@ if __name__ == "__main__":
     df_result.to_csv(model_outpath + 'xgb_df_residuals.csv')
     feat_imp.to_csv(model_outpath + 'xgb_featureImportanceTbl.csv')
 
-    print df_result.describe()

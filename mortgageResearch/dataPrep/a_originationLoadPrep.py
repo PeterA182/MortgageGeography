@@ -25,9 +25,9 @@ sys.path.append(
 from config import configs
 
 # Run Settings
-d_source = 'freddie'
 d_sample_run = True
 d_outpath = sys.argv[1]
+d_source = sys.argv[2]
 origination_filename = 'loadedPrepped_originationData'
 if not os.path.exists(d_outpath):
     os.makedirs(d_outpath)
@@ -63,7 +63,6 @@ if __name__ == "__main__":
         col_list=originationFileColList
     )
     update_log(action="Loaded data into DataFrame 'df_origination'")
-    print df_origination.head()
 
     # Check for any entirely null column
     if any(sum(df_origination[col].isnull()) == len(df_origination) for col
@@ -197,8 +196,6 @@ if __name__ == "__main__":
     all_col_list.append('superConformingFlag')
     update_log(action="Replaced non-'Y' 'superConformingFlag' values with 'N'")
 
-    print [x for x in df_origination.columns if x not in all_col_list]
-
     # Mtg Insurance Pct
     df_origination.loc[:, 'mtgInsurancePct'] = \
         df_origination['mtgInsurancePct'].astype(str).apply(
@@ -268,22 +265,11 @@ if __name__ == "__main__":
         '.csv'
     )
     df_origination.to_pickle(
+        d_outpath +
         configs[d_source]['origination_filenames']['prepped'] +
-        origination_filename +
         '.pkl'
     )
     update_log(action='Finished',
                export=True)
-
-    sys.exit()
-
-
-
-
-
-
-
-
-
 
 

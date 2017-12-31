@@ -13,7 +13,6 @@ sys.path.append(
     "/Users/peteraltamura/Documents/GitHub/"
     "mortgageResearch/mortgageResearch/dataPrep/"
 )
-from a_originationLoadPrep import origination_filename, d_source
 from a_monthlyLoadPrep import dmap
 
 # Other
@@ -247,7 +246,7 @@ def get_default_month_prior_target(monthly, delinq_days_min):
 # Run Variables
 combined_filename = 'loan_postFE'
 d_outpath = sys.argv[1]
-origFE_filename = 'originationFE_complete'
+d_source = sys.argv[2]
 homogeneity_thresh = .99
 delinq_days_min = 60
 default_month_target = False
@@ -274,15 +273,16 @@ if __name__ == "__main__":
     #
     # Read in Monthly
     df_monthly = pd.read_pickle(
-        d_outpath +
-        configs[d_source]['origination_filenames']['prepped'] + '.pkl')
+        d_outpath + configs[d_source]['monthly_filenames']['prepped'] + '.pkl'
+    )
     for c in df_monthly.columns:
         if df_monthly[c].dtype not in [object, '<M8[ns]']:
             df_monthly.loc[:, c] = df_monthly[c].astype(float)
 
     # Read in Origination
     df_origination = pd.read_pickle(
-        d_outpath + origination_filename + '.pkl'
+        d_outpath + configs[d_source]['origination_filenames']['prepped'] +
+        '.pkl'
     )
     for c in df_origination.columns:
         if df_origination[c].dtype not in [object, '<M8[ns]']:
@@ -322,8 +322,9 @@ if __name__ == "__main__":
     # creditScore - Standardize via mean()
     df_origination.loc[:, 'creditScore'] -= \
         df_origination['creditScore'].mean()
-    df_origination.to_pickle(d_outpath +
-                             configs[d_source]['origination_filenames']['FE'] + '.p')
+    df_origination.to_pickle(
+        d_outpath + configs[d_source]['origination_filenames']['FE'] + '.pkl'
+    )
 
 
 
