@@ -32,7 +32,7 @@ configs = {
                          'firstPaymentDate', 'first_default_month',
                          'postalCode'],
             'vif_threshold': 20,
-            'target': 'currLoanDelinqStatus'
+            'target': 'default_in_window'
         },
 
         # origination features only
