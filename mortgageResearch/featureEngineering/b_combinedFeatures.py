@@ -2,343 +2,192 @@ from __future__ import division
 
 # Local
 import sys
+
 sys.path.append(
     "/Users/peteraltamura/Documents/GitHub/"
     "mortgageResearch/mortgageResearch/configs/"
 )
 from config import configs
 
-sys.path.append(
-    "/Users/peteraltamura/Documents/GitHub/"
-    "mortgageResearch/mortgageResearch/dataPrep/"
-)
-from a_originationLoadPrep import d_outpath, origination_filename
-from a_monthlyLoadPrep import dmap
-
 
 # Other
 import pandas as pd
-from sklearn.feature_selection import VarianceThreshold
+import datetime as dt
+import numpy as np
 
-# ---- ---- ----
-# NOTES
-"""
-Origination features to be created from origination table only
-Default info at the Loan Level (first default month, default flag) to be merged
-    to this table first
-Monthly features continue to be generated on full monthly table
-Monthly-specific features to be merged fully following
-"""
-
-
-# ---- ---- ----
 #
+# Import run variales
+d_outpath = sys.argv[1]
+d_source = sys.argv[2]
+model_name = sys.argv[3]
+default_window_months = configs[d_source][model_name]['default_window_months']
+# d_outpath = '/Users/peteraltamura/Documents/GitHub/mortgageResearch/output/' \
+#             'combinedDefaultPred_logit/'
+# d_source = 'freddie'
+# model_name = 'comb_logisticRegression'
+# default_window_months = 3
+
+
 # Methods
-def VarianceThreshold_selector(exog):
-    """
-    Implementation of VarianceThreshold from sklearn with get_support() for 
-    retaining proper column names for non-dropped columns
-
-
-    PARAMETERS
-    ----------
-    data: DataFrame
-        contains exogenous variables to be measured for homogeneity
-    """
-
-    # Save Date columns
-    excl_cols = [x for x in exog.columns if 'Date' in x]
-    excl_cols.extend([x for x in exog.columns if (
-        (x not in excl_cols) and
-        (exog[x].dtype in [object, '<M8[ns]']))
-                      ])
-
-    # Initial columns set
-    exog_columns = [x for x in exog.columns if x not in excl_cols]
-
-    # Instantiate selector and fit_transform to data
-    selector = VarianceThreshold(homogeneity_thresh)
-    df = selector.fit_transform(exog[exog_columns])
-    labels = []
-
-    j = 0
-    for x in selector.get_support(indices=False):
-        if x:
-            labels.append(exog_columns[j])
-        j += 1
-
-    return pd.DataFrame(data=df,
-                        columns=labels)
-
-
-def remove_homogeneity(exog, thresh):
-    """
-
-    :param exog: 
-    :param thresh: 
-    :return: 
-    """
-
-    # Set up dropped columns list
-    dropped = []
-
-    # Get ValueCounts out and turn in DataFrame()
-    for c in exog.columns:
-
-        vc = pd.DataFrame(exog[c].value_counts())
-
-        # Reset index and assign column names
-        vc.reset_index(inplace=True)
-        vc.columns = ['val', 'occ']
-        vc['occ'] /= vc['occ'].sum()
-        if sum(vc['occ'] > thresh) > 0:
-            print "Column {}: dropped".format(c)
-            dropped.append(c)
-
-    # Apply dropped columns
-    return exog.loc[:, [x for x in exog.columns if x not in dropped]]
-
-
-def create_default_flag(origination, monthly, delinq_days_min, dmap=dmap):
+def add_feature(add, all, metric):
     """
     
     :param df: 
     :return: 
     """
 
-    # Assert min number of days is workable
-    assert delinq_days_min in [30, 60, 90, 120]
-
-    # Flag
-    days_to_val = {k: v for k, v in dmap.iteritems() if
-                   str(delinq_days_min) in v}
-    if len(days_to_val.keys()) > 1:
-        raise Exception("'currLoanDelinqStatus' values have overlap")
-    days_to_val = days_to_val.keys()[0]
-
-    # Mask out
-    msk = (
-        monthly['currLoanDelinqStatus'] >= float(days_to_val)
+    pre_len = len(all)
+    print sorted(list(all.columns))
+    print sorted(list(add.columns))
+    all = pd.merge(
+        all,
+        add,
+        how='left',
+        on=['loanSeqNumber']
     )
-    monthly.loc[:,
-        'delinquent_threshold_passed_{}'.format(
-            str(delinq_days_min)
-        )] = 0
-    monthly.loc[msk, 'delinquent_threshold_passed_{}'.format(
-        str(delinq_days_min)
-    )] = 1
-
-    # Create dictionary
-    ret_d = monthly.loc[
-        monthly['delinquent_threshold_passed_{}'.format(
-            str(delinq_days_min)
-        )] == 1, :].set_index('loanSeqNumber')[
-        'delinquent_threshold_passed_{}'.format(
-            str(delinq_days_min)
-        )].to_dict()
-
-    origination.loc[:, 'delinquent_threshold_passed_{}'.format(
-        str(delinq_days_min)
-    )] = 0
-    origination.loc[origination['loanSeqNumber'].isin(ret_d.keys()),
-                    'delinquent_threshold_passed_{}'.format(
-        str(delinq_days_min)
-    )] = origination['loanSeqNumber'].map(ret_d)
-
-    return origination
+    if len(all) != pre_len:
+        raise Exception("Merge of tye \'left\' has added rows unexpectedly "
+                        "for metrics {}".format(metric))
 
 
-def get_first_default_month(origination, monthly, delinq_days_min):
+def add_target(df, all):
     """
     
-    Answers:
-    Is the customer delinquent this month
-    
-    
-    PARAMETERS
-    ----------
-    df: DataFrame
-        loan level dateframe containing (at least) monthly observations and 
-        possible origination observations as well
+    :param add: 
+    :param all: 
+    :return: 
     """
 
-    # Split to those who have defaulted and those who have not
-    monthlylt_loans = set(
-        monthly.loc[monthly['delinquent_threshold_passed_{}'.format(
-            str(delinq_days_min)
-        )] == 1, :]['loanSeqNumber']
-    )
-
-    # Delinquencies Mask
-    delinq_msk = (monthly['loanSeqNumber'].isin(list(monthlylt_loans)))
-
-    # Split out the DataFrames
-    monthly_delinq = monthly.loc[delinq_msk, :]
-
-    # Get min default date
-    monthly_delinq['firstDefaultMth'] = monthly_delinq.groupby(
+    # Aggregate and create target
+    df = df.groupby(
         by=['loanSeqNumber'],
         as_index=False
-    )['mthlyRepPeriod'].transform(min)
-    monthly_delinq = monthly_delinq.loc[
-                     monthly_delinq['firstDefaultMth'].notnull(), :]
+    ).agg({'currLoanDelinqStatus': np.max})
+    df.loc[df['currLoanDelinqStatus'] > 0, 'currLoanDelinqStatus'] = 1
 
-    # Return dictionary
-    ret_d = monthly_delinq.set_index('loanSeqNumber')\
-        ['firstDefaultMth'].to_dict()
-
-    # Create first default month
-    origination.loc[:, 'first_default_month'] = \
-        origination['loanSeqNumber'].map(ret_d)
-
-    return origination
-
-
-def get_default_month_prior_target(monthly, delinq_days_min):
-    """
-    
-    :param df: 
-    :return: 
-    """
-
-    # Split to those who have defaulted and those who have not
-    monthlylt_loans = set(
-        monthly.loc[monthly['delinquent_threshold_passed_{}'.format(
-            str(delinq_days_min)
-        )] == 1, :]['loanSeqNumber']
+    # Merge back to main table
+    pre_len = len(all)
+    all = pd.merge(
+        all,
+        df,
+        how='left',
+        on=['loanSeqNumber']
     )
+    if len(all) != pre_len:
+        raise Exception("Merge of type \'left\' for target has added rows "
+                        "unexpectedly.")
 
-    # Delinquencies Mask
-    delinq_msk = (monthly['loanSeqNumber'].isin(list(monthlylt_loans)))
-
-    # Split out the DataFrames
-    monthly_delinq = monthly.loc[delinq_msk, :]
-
-    # Sort
-    monthly_delinq.sort_values(by=['loanSeqNumber', 'mthlyRepPeriod'],
-                               ascending=True,
-                               inplace=True)
-
-    # Flag where delinquent_threshold_passed
-    monthly_delinq.loc[:, 'prior_mth'] = 0
-    monthly_delinq.loc[monthly_delinq['delinquent_threshold_passed_{}'.format(
-        str(delinq_days_min)
-    )].shift(-2) == 1, 'prior_mth'] = 1
-
-    # Filter to the immediately prior observations
-    month_prior_default = \
-        monthly_delinq.loc[monthly_delinq['prior_mth'] == 1, :]
-
-    # Filter to all prior observations by flagging subsequent
-    monthly_delinq.loc[(
-        (monthly_delinq['prior_mth'].shift(1).isin([1, 2]))
-        &
-        (monthly_delinq['loanSeqNumber'].shift(1) ==
-         monthly_delinq['loanSeqNumber'])
-    ), 'prior_mth'] = 2
-
-
-    # Filter
-    months_prior_default = monthly_delinq.loc[
-        ~monthly_delinq['prior_mth'].isin([1, 2]), :]
-
-    return months_prior_default, month_prior_default
-
-
-# ---- ---- ----
-#
-# Run Variables
-combined_filename = 'loan_postFE'
-origFE_filename = 'originationFE_complete'
-homogeneity_thresh = .99
-delinq_days_min = 60
-default_month_target = False
-default_month_prior = True
-idx_cols = [
-    'loanSeqNumber',
-    'delinquent_threshold_passed_{}'.format(delinq_days_min),
-    'first_default_month',
-    'MSA',
-    'mthlyRepPeriod',
-    'zeroBalanceEffectiveDate',
-    'dueDateLastPaidInstallment',
-    'maturityDate',
-    'firstPaymentDate',
-    'first_default_month',
-    'postalCode'
-]
 
 
 if __name__ == "__main__":
 
     #
-    # ---- ---- ----      ---- ---- ----
+    # ---- ---- ----      ---- ---- ----      ---- ---- ----
     #
-    # Read in Monthly
-    df_monthly = pd.read_pickle(d_outpath + mthly_filename + '.p')
+    # Prep / Initial
+
+    # Read in prepped monthly data
+    df_monthly = pd.read_pickle(
+        d_outpath + configs[d_source][model_name]['combined_filenames']['prepped'] + '.pkl'
+    )
     for c in df_monthly.columns:
         if df_monthly[c].dtype not in [object, '<M8[ns]']:
             df_monthly.loc[:, c] = df_monthly[c].astype(float)
-
-    # Read in Origination
-    df_origination = pd.read_pickle(
-        d_outpath + origination_filename + '.p'
-    )
-    for c in df_origination.columns:
-        if df_origination[c].dtype not in [object, '<M8[ns]']:
-            df_origination.loc[:, c] = df_origination[c].astype(float)
-
-    # Drop records that are not in both
-    match = list(
-        set(df_origination.loanSeqNumber) &
-        set(df_monthly.loanSeqNumber)
-    )
-    df_origination = df_origination.loc[
-        df_origination['loanSeqNumber'].isin(match), :]
-    df_monthly = df_monthly.loc[
-        df_monthly['loanSeqNumber'].isin(match), :]
+    df_monthly.loc[:, 'mthlyRepPeriod'] = \
+        pd.to_datetime(df_monthly['mthlyRepPeriod'])
 
     #
-    # ---- ---- ----      ---- ---- ----
-    #
-    # Homogeneity
-    df_origination = remove_homogeneity(exog=df_origination,
-                                        thresh=homogeneity_thresh)
-
-    #
-    # ---- ---- ----      ---- ---- ----
-    #
-    # Flag Defaults above minimum threshold and attach the associated min date
-    #   of that occurring
-    df_origination = create_default_flag(origination=df_origination,
-                                         monthly=df_monthly,
-                                         delinq_days_min=delinq_days_min)
-    df_origination = get_first_default_month(origination=df_origination,
-                                             monthly=df_monthly,
-                                             delinq_days_min=delinq_days_min)
-    all_prior_months, single_prior_month = get_default_month_prior_target(
-        monthly=df_monthly,
-        delinq_days_min=delinq_days_min
-    )
-
-    # Remove created column from monthly once added to origination
-    single_prior_month.drop(
-        labels=['delinquent_threshold_passed_{}'.format(str(delinq_days_min))],
-        axis=1,
+    # Rank each month's observation for each loan
+    df_monthly.sort_values(
+        by=['loanSeqNumber', 'mthlyRepPeriod'],
+        ascending=True,
         inplace=True
     )
+    df_monthly['mth_of_loan'] = df_monthly.groupby(
+        by=['loanSeqNumber'],
+        as_index=True
+    )['mthlyRepPeriod'].rank(method='min').astype(int)
 
     #
-    # ---- ---- ----      ---- ---- ----
-    # creditScore - Standardize via mean()
-    df_origination.loc[:, 'creditScore'] -= \
-        df_origination['creditScore'].mean()
+    # Set up table to append metrics to
+    df_loans = df_monthly.loc[:, ['loanSeqNumber']].\
+        drop_duplicates(inplace=False)
 
-    df_origination.to_pickle(
-        d_outpath + origFE_filename + '.p'
+    #
+    # ---- ---- ----      ---- ---- ----      ---- ---- ----
+    #
+    # Add Target
+
+    # Remove recent "x" number of observations to create predict "window"
+    df_monthly['loan_months_total'] = df_monthly.groupby(
+        by=['loanSeqNumber'],
+        as_index=False
+    )['mth_of_loan'].transform(np.max)
+    window_months_msk = (
+        df_monthly['mth_of_loan'] <
+        (df_monthly['loan_months_total'] -
+         configs[d_source][model_name]['default_window_months'])
     )
 
+    # Split into pre-prediction window and post-prediction window
+    # chronologically
+    df_monthly = df_monthly.loc[window_months_msk, :]
+    df_monthly_target_window = df_monthly.loc[~window_months_msk, :]
+
+    # Add Target
+    add_target(df=df_monthly_target_window, all=df_loans)
+    
+    #
+    # ---- ---- ----      ---- ---- ----      ---- ---- ----
+    #
+    # Feature Engineering
+
+    # Feature: been in default before
+    msk = (
+        df_monthly.groupby(['loanSeqNumber'])
+        ['currLoanDelinqStatus'].transform('max') > 0
+    )
+    df_monthly.loc[:, 'prev_defaults'] = 0
+    df_monthly.loc[msk, 'prev_defaults'] = 1
+    add = df_monthly.groupby(['loanSeqNumber'], as_index=False).agg({'prev_defaults': np.max})
+    add_feature(add=add, all=df_loans, metric='prev_defaults')
+
+    # Feature: months spent in default before
+    add = df_monthly.groupby(['loanSeqNumber'], as_index=False).agg({'prev_defaults': np.sum})
+    add_feature(add=add, all=df_loans, metric='prev_defaults_sum')
+
+    # age of loan
+    add = df_monthly.groupby(
+        by=['loanSeqNumber'],
+        as_index=False
+    ).agg({'loan_months_total': np.mean})
+    add_feature(add=add, all=df_loans, metric='loan_months_total')
+
+    # currUPB
+    # Feature: currUPB variance between origination and max non-target month
+    add = df_monthly.groupby(
+        by=['loanSeqNumber'],
+        as_index=False
+    ).agg({'currUPB': np.var})
+    add.rename(columns={'currUPB': 'UPB_var'}, inplace=True)
+    add_feature(add=add, all=df_loans, metric='UPB_var')
+
+    # Feature: currUPB max diff
+    add = df_monthly.groupby(
+        by=['loanSeqNumber'],
+        as_index=False
+    ).agg({'currUPB': [np.max, np.min]})
+    add['UPD_diff'] = (add['max'] - add['min'])
+    add_feature(add=add, all=df_loans, metric='UPB_max_diff')
+
+    # Feature: LTV diff as function of time between origination and max
+    # non-target month
 
 
+    # UPB diff as function of time
 
+
+    df_monthly.to_pickle(
+        d_outpath + configs[d_source][model_name]['combined_filenames']['FE'] + '.pkl'
+    )
 
