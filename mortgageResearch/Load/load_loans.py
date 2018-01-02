@@ -85,7 +85,7 @@ def load_data(path, nrows=None, columns=None, years=None, quarters=None,
     return df_data
 
 
-def load_origination(sample_run, configs, source, col_list):
+def load_origination(sample_run, configs, source, model_name, col_list):
     """
     Loads 
     
@@ -95,15 +95,15 @@ def load_origination(sample_run, configs, source, col_list):
     # Load in from CSV
     if sample_run:
         df_origination = load_data(
-            path=configs[source]['sample_single_dir'] +
-                 configs[source]['sample_single_file'],
+            path=configs[source][model_name]['sample_single_dir'] +
+                 configs[source][model_name]['sample_single_file'],
             columns=col_list,
             date_col_fmt_dict={'firstPaymentDate': '%Y%m'}
         )
 
     elif not sample_run:
         df_origination = pd.DataFrame()
-        for path in glob.glob(configs[source]['sample_single_dir'] + '*.txt'):
+        for path in glob.glob(configs[source][model_name]['sample_single_dir'] + '*.txt'):
             print "Loading File: {}".format(path)
             df_origination = pd.concat(
                 [
@@ -125,7 +125,8 @@ def load_origination(sample_run, configs, source, col_list):
     return df_origination
 
 
-def load_monthly(sample_run, configs, source, col_list, most_recent=True):
+def load_monthly(sample_run, configs, source, model_name, col_list,
+                 most_recent=True):
     """
     Loads 
 
@@ -136,8 +137,8 @@ def load_monthly(sample_run, configs, source, col_list, most_recent=True):
     # Load in from CSV
     if sample_run:
         df_monthly = load_data(
-            path=configs[source]['sample_monthly_dir'] +
-                 configs[source]['sample_monthly_file'],
+            path=configs[source][model_name]['sample_monthly_dir'] +
+                 configs[source][model_name]['sample_monthly_file'],
             columns=col_list,
             date_col_fmt_dict={'firstPaymentDate': '%Y%m'}
         )

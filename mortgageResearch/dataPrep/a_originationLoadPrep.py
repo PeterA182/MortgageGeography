@@ -28,6 +28,7 @@ from config import configs
 d_sample_run = True
 d_outpath = sys.argv[1]
 d_source = sys.argv[2]
+model_name = sys.argv[3]
 origination_filename = 'loadedPrepped_originationData'
 if not os.path.exists(d_outpath):
     os.makedirs(d_outpath)
@@ -60,6 +61,7 @@ if __name__ == "__main__":
         sample_run=d_sample_run,
         configs=configs,
         source=d_source,
+        model_name=model_name,
         col_list=originationFileColList
     )
     update_log(action="Loaded data into DataFrame 'df_origination'")
@@ -261,12 +263,12 @@ if __name__ == "__main__":
     df_origination = df_origination.loc[:, all_col_list]
     df_origination.to_csv(
         d_outpath +
-        configs[d_source]['origination_filenames']['prepped'] +
+        configs[d_source][model_name]['origination_filenames']['prepped'] +
         '.csv'
     )
     df_origination.to_pickle(
         d_outpath +
-        configs[d_source]['origination_filenames']['prepped'] +
+        configs[d_source][model_name]['origination_filenames']['prepped'] +
         '.pkl'
     )
     update_log(action='Finished',

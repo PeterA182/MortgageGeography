@@ -28,6 +28,7 @@ from config import configs
 d_sample_run = True
 d_outpath = sys.argv[1]
 d_source = sys.argv[2]
+model_name = sys.argv[3]
 dmap = {
     '0': '0_29days_delinquent',
     '1': '30_59days delinquent',
@@ -81,6 +82,7 @@ if __name__ == "__main__":
         sample_run=d_sample_run,
         configs=configs,
         source=d_source,
+        model_name=model_name,
         col_list=monthlyFileColList,
         most_recent=True
     )
@@ -95,6 +97,7 @@ if __name__ == "__main__":
     # Format Monthly Reporting Period
     df_monthly.loc[:, 'mthlyRepPeriod'] = \
         pd.to_datetime(df_monthly['mthlyRepPeriod'], format='%Y%m')
+    df_monthly = df_monthly.loc[df_monthly['mthlyRepPeriod'].notnull(), :]
     all_col_list.append('mthlyRepPeriod')
     update_log(action="Formatted 'mthlyRepPeriod' to month and year datetime "
                       "objects")
@@ -305,14 +308,13 @@ if __name__ == "__main__":
             print "     {} null observations".format(
                 str(sum(df_monthly[c].isnull()))
             )
-
     # Send out CSV and Pickle
     df_monthly.to_csv(
         d_outpath +
-        configs[d_source]['monthly_filenames']['prepped'] + '.csv')
+        configs[d_source][model_name]['monthly_filenames']['prepped'] + '.csv')
     df_monthly.to_pickle(
         d_outpath +
-        configs[d_source]['monthly_filenames']['prepped'] + '.pkl'
+        configs[d_source][model_name]['monthly_filenames']['prepped'] + '.pkl'
     )
     update_log(action='Finished',
                export=True)
