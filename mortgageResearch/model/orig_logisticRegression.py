@@ -148,15 +148,15 @@ if __name__ == "__main__":
 
     # Send out
     pyplot.savefig(
-        d_outpath + configs[d_source]['results'] +
+        d_outpath + configs[d_source]['results_dir'] +
         'logRegr_coefficientViz.png'
     )
     df_result.to_csv(
-        d_outpath + configs[d_source]['results'] +
+        d_outpath + configs[d_source]['results_dir'] +
         'logRegr_df_residuals.csv'
     )
     coeffTable.to_csv(
-        d_outpath + configs[d_source]['results'] +
+        d_outpath + configs[d_source]['results_dir'] +
         'logRegr_coefTbl.csv'
     )
 
