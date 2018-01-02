@@ -15,11 +15,14 @@ configs = {
                                   "mortgageResearch/Data/monthly/bins/",
             'maxBinOccupancy': 10000,
             'monthly_filenames': {'prepped': 'loadedPrepped_monthlyData',
-                                  'FE': 'FE_monthlyData'},
+                                  'FE': 'FE_monthlyData',
+                                  'FS': 'FS_monthlyData'},
             'origination_filenames': {'prepped': 'loadedPrepped_originationData',
-                                      'FE': 'FE_originationData'},
+                                      'FE': 'FE_originationData',
+                                      'FS': 'FS_originationData'},
             'combined_filenames': {'prepped': 'loadedPrepped_combinedData',
-                                   'FE': 'FE_combinedData'},
+                                   'FE': 'FE_combinedData',
+                                   'FS': 'FS_combinedData'},
             'results_dir': 'modelResults/',
             'default_window_months': 3,
             'idx_cols': ['loanSeqNumber', 'currLoanDelinqStatus',
@@ -28,7 +31,8 @@ configs = {
                          'dueDateLastPaidInstallment', 'maturityDate',
                          'firstPaymentDate', 'first_default_month',
                          'postalCode'],
-            'target': ['currLoanDelinqStatus']
+            'vif_threshold': 20,
+            'target': 'currLoanDelinqStatus'
         },
 
         # origination features only

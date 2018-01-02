@@ -11,6 +11,8 @@ from config import configs
 import os
 import pandas as pd
 import numpy as np
+
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from matplotlib import pyplot
@@ -27,6 +29,9 @@ model_name = 'comb_logisticRegression'
 model_outpath = d_outpath + 'combLogReg_results/'
 if not os.path.exists(model_outpath):
     os.makedirs(model_outpath)
+results_outpath = d_outpath + configs[d_source][model_name]['results_dir']
+if not os.path.exists(results_outpath):
+    os.makedirs(results_outpath)
 
 idx_cols = configs[d_source][model_name]['idx_cols']
 test_size = .33
@@ -50,17 +55,17 @@ def get_results_table(X_test, Y_test, Y_hat):
     df_result.loc[:, 'falsePosPred'] = 0
     df_result.loc[(
                       (df_result['Y_hat'] == 1) &
-                      (df_result['delinquent_threshold_passed_60'] == 0)
+                      (df_result[configs[d_source][model_name]['target']] == 0)
                   ), 'falsePosPred'] = 1
 
     # False Negative Prediction
     df_result.loc[:, 'falseNegPred'] = 0
     df_result.loc[(
                       (df_result['Y_hat'] == 0) &
-                      (df_result['delinquent_threshold_passed_60'] == 1)
+                      (df_result[configs[d_source][model_name]['target']] == 1)
                   ), 'falseNegPred'] = 1
     df_result.loc[:, 'match'] = (
-        df_result['Y_hat'] == df_result['delinquent_threshold_passed_60']
+        df_result['Y_hat'] == df_result[configs[d_source][model_name]['target']]
     )
 
     return df_result
@@ -93,6 +98,24 @@ def logisticRegression_model(X_train, Y_train, X_test, Y_test, idx_cols=idx_cols
     return model, df_result
 
 
+def calculate_vif_(X, thresh=20):
+    variables = range(X.shape[1])
+    dropped=True
+    while dropped:
+        dropped=False
+        vif = [variance_inflation_factor(X[variables].values, ix) for ix in range(X[variables].shape[1])]
+
+        maxloc = vif.index(max(vif))
+        if max(vif) > thresh:
+            print('dropping \'' + X[variables].columns[maxloc] + '\' at index: ' + str(maxloc))
+            del variables[maxloc]
+            dropped=True
+
+    print('Remaining variables:')
+    print(X.columns[variables])
+    return X[variables]
+
+
 if __name__ == "__main__":
 
     # Read in Data
@@ -114,6 +137,17 @@ if __name__ == "__main__":
     # X index
     X_idx = X.loc[:, idx_cols]
     X = X.loc[:, [x for x in X.columns if x not in idx_cols]]
+    print "Features:"
+    print X.columns
+    print X.dtypes
+
+    # X = calculate_vif_(X=X, thresh=configs[d_source][model_name]['vif_thresh'])
+    # X.to_pickle(d_outpath + configs[d_source][model_name]['FS'] + '.pkl')
+    X = X.loc[:, [
+        'creditScore', 'currUPB', 'origUPB', 'origLTV', 'origCLTV',
+        'loan_months_total', 'prev_defaults', 'UPB_max_diff', 'UPB_var'
+    ]]
+    print X.head()
 
     # Split
     X_train, X_test, Y_train, Y_test = train_test_split(
@@ -131,34 +165,18 @@ if __name__ == "__main__":
                                                 X_test=X_test,
                                                 Y_test=Y_test)
 
-    # # Extract Feature Importances DataFrame
-    coeffTable = pd.DataFrame(model.coef_.T)
-    print coeffTable
-    coeffTable.columns = ['Coefficient']
-    coeffTable['Feature'] = X_test.columns
-
     # Send out
-    pyplot.savefig(
-        d_outpath + configs[d_source]['results_dir'] +
-        'logRegr_coefficientViz.png'
-    )
-    df_result.to_csv(
-        d_outpath + configs[d_source]['results_dir'] +
-        'logRegr_df_residuals.csv'
-    )
-    coeffTable.to_csv(
-        d_outpath + configs[d_source]['results_dir'] +
-        'logRegr_coefTbl.csv'
-    )
+    pyplot.savefig(results_outpath + 'logRegr_coefficientViz.png')
+    df_result.to_csv(results_outpath + 'logRegr_df_residuals.csv')
 
     # Print Stats
     print "Percent Match"
     print len(df_result.loc[(
-        df_result['delinquent_threshold_passed_60'] == df_result['Y_hat']
-    ),  :])/len(df_result)
+        df_result[configs[d_source][model_name]['target']] == df_result['Y_hat']
+    ), :])/len(df_result)
     print "Percent Positive Match"
     print len(df_result.loc[(
-        (df_result['delinquent_threshold_passed_60'] == 1)
+        (df_result[configs[d_source][model_name]['target']] == 1)
         &
         (df_result['Y_hat'] == 1)
     ), :])/len(df_result)

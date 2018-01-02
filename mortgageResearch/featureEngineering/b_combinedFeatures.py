@@ -37,8 +37,6 @@ def add_feature(add, all, metric):
     """
 
     pre_len = len(all)
-    print sorted(list(all.columns))
-    print sorted(list(add.columns))
     all = pd.merge(
         all,
         add,
@@ -76,7 +74,6 @@ def add_target(df, all):
     if len(all) != pre_len:
         raise Exception("Merge of type \'left\' for target has added rows "
                         "unexpectedly.")
-
 
 
 if __name__ == "__main__":
@@ -154,6 +151,7 @@ if __name__ == "__main__":
 
     # Feature: months spent in default before
     add = df_monthly.groupby(['loanSeqNumber'], as_index=False).agg({'prev_defaults': np.sum})
+    add.rename(columns={'prev_defaults': 'prev_defaults_sum'}, inplace=True)
     add_feature(add=add, all=df_loans, metric='prev_defaults_sum')
 
     # age of loan
@@ -177,7 +175,8 @@ if __name__ == "__main__":
         by=['loanSeqNumber'],
         as_index=False
     ).agg({'currUPB': [np.max, np.min]})
-    add['UPD_diff'] = (add['max'] - add['min'])
+    add.columns = [x[1] if (x[1] and x[1] != '') else x[0] for x in add.columns]
+    add['UPD_diff'] = (add['amax'] - add['amin'])
     add_feature(add=add, all=df_loans, metric='UPB_max_diff')
 
     # Feature: LTV diff as function of time between origination and max
@@ -186,8 +185,8 @@ if __name__ == "__main__":
 
     # UPB diff as function of time
 
-
-    df_monthly.to_pickle(
-        d_outpath + configs[d_source][model_name]['combined_filenames']['FE'] + '.pkl'
+    df_loans.to_pickle(
+        d_outpath +
+        configs[d_source][model_name]['combined_filenames']['FE'] + '.pkl'
     )
 

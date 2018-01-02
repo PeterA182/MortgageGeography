@@ -235,8 +235,10 @@ if __name__ == "__main__":
     #prepayPenaltymtgFlag
     df_origination.loc[df_origination['prepayPenaltyMtgFlag'] == 78.0,
                        'prepayPenaltyMtgFlag'] = 1
-    df_origination.loc[df_origination['prepayPenaltyMtgFlag'] == 'N',
+    df_origination.loc[df_origination['prepayPenaltyMtgFlag'] != 1,
                        'prepayPenaltyMtgFlag'] = 0
+    df_origination.loc[:, 'prepayPenaltyMtgFlag'] = \
+        df_origination['prepayPenaltyMtgFlag'].astype(float)
     all_col_list.append('prepayPenaltyMtgFlag')
     update_log(
         action="Formatted 'prepayPenaltyMtgFlag' mapping '78.0' to 'Yes'"
