@@ -244,9 +244,9 @@ def get_default_month_prior_target(monthly, delinq_days_min):
 
 
 # Run Variables
-combined_filename = 'loan_postFE'
 d_outpath = sys.argv[1]
 d_source = sys.argv[2]
+model_name = sys.argv[3]
 homogeneity_thresh = .99
 delinq_days_min = 60
 default_month_target = False
@@ -273,7 +273,7 @@ if __name__ == "__main__":
     #
     # Read in Monthly
     df_monthly = pd.read_pickle(
-        d_outpath + configs[d_source]['monthly_filenames']['prepped'] + '.pkl'
+        d_outpath + configs[d_source][model_name]['monthly_filenames']['prepped'] + '.pkl'
     )
     for c in df_monthly.columns:
         if df_monthly[c].dtype not in [object, '<M8[ns]']:
@@ -281,7 +281,7 @@ if __name__ == "__main__":
 
     # Read in Origination
     df_origination = pd.read_pickle(
-        d_outpath + configs[d_source]['origination_filenames']['prepped'] +
+        d_outpath + configs[d_source][model_name]['origination_filenames']['prepped'] +
         '.pkl'
     )
     for c in df_origination.columns:
@@ -317,13 +317,9 @@ if __name__ == "__main__":
                                              monthly=df_monthly,
                                              delinq_days_min=delinq_days_min)
 
-    #
-    # ---- ---- ----      ---- ---- ----
-    # creditScore - Standardize via mean()
-    df_origination.loc[:, 'creditScore'] -= \
-        df_origination['creditScore'].mean()
+    # Send to outpath
     df_origination.to_pickle(
-        d_outpath + configs[d_source]['origination_filenames']['FE'] + '.pkl'
+        d_outpath + configs[d_source][model_name]['origination_filenames']['FE'] + '.pkl'
     )
 
 

@@ -20,6 +20,7 @@ from b_combinedFeatures import combined_filename, idx_cols, \
 
 import os
 import pandas as pd
+import numpy as np
 from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
 from matplotlib import pyplot
@@ -114,11 +115,16 @@ def xgb_model(X_train, Y_train, X_test, Y_test, idx_cols=idx_cols):
     return model, df_result
 
 
+# Variables
+d_outpath = sys.argv[1]
+d_source = sys.argv[2]
+
+
 if __name__ == "__main__":
 
     # Read in Data
     df_comb = pd.read_pickle(
-        d_outpath + origFE_filename + '.p'
+        d_outpath + configs[d_source]['origination_filenames']['FE'] + '.pkl'
     )
 
     # Split Exogenous and Endogenous
@@ -159,7 +165,31 @@ if __name__ == "__main__":
                model.feature_importances_)
 
     # Send out
-    pyplot.savefig(model_outpath + 'xgb_featureImportanceViz.png')
-    df_result.to_csv(model_outpath + 'xgb_df_residuals.csv')
-    feat_imp.to_csv(model_outpath + 'xgb_featureImportanceTbl.csv')
+    pyplot.savefig(
+        d_outpath + configs[d_source]['results_dir'] +
+        'xgb_featureImportanceViz.png'
+    )
+    df_result.to_csv(
+        d_outpath + configs[d_source]['results_dir'] +
+        'xgb_df_residuals.csv'
+    )
+    feat_imp.to_csv(
+        d_outpath + configs[d_source]['results_dir'] +
+        'xgb_featureImportanceTbl.csv'
+    )
 
+    # Print Stats
+    print "Percent Match"
+    print len(df_result.loc[(
+        df_result['delinquent_threshold_passed_60'] == df_result['Y_hat']
+    ), :]) / len(df_result)
+    print "Percent Positive Match"
+    print len(df_result.loc[(
+        (df_result['delinquent_threshold_passed_60'] == 1)
+        &
+        (df_result['Y_hat'] == 1)
+    ), :]) / len(df_result)
+    print "Percent False Positive"
+    print str(np.mean(df_result['falsePosPred']))
+    print "Percent False Negative"
+    print str(np.mean(df_result['falseNegPred']))
