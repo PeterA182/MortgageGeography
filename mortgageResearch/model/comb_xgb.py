@@ -15,6 +15,7 @@ import numpy as np
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
+from xgboost import XGBClassifier
 from matplotlib import pyplot
 
 # Variables
@@ -71,7 +72,7 @@ def get_results_table(X_test, Y_test, Y_hat):
     return df_result
 
 
-def logisticRegression_model(X_train, Y_train, X_test, Y_test, idx_cols=idx_cols):
+def xgb_model(X_train, Y_train, X_test, Y_test, idx_cols=idx_cols):
     """
 
     :param X: 
@@ -79,10 +80,26 @@ def logisticRegression_model(X_train, Y_train, X_test, Y_test, idx_cols=idx_cols
     :return: 
     """
 
-    # Instantiate and Fit Model
-    model = LogisticRegression()
-    model.fit(X_train.loc[:, [x for x in X_train.columns if x not in idx_cols]],
-              Y_train)
+    X_train_sub = X_train.loc[:, [
+        x for x in X_train.columns if x not in idx_cols
+    ]]
+    for c in X_train_sub.columns:
+        print c
+
+        if sum(X_train_sub[c].isnull()) != 0:
+            print "     {} null observations".format(
+                str(sum(X_train_sub[c].isnull()))
+            )
+
+    for c in Y_train.columns:
+        print c
+        assert sum(Y[c].isnull()) == 0
+
+    model = XGBClassifier()
+    model.fit(
+        X_train_sub,
+        Y_train
+    )
     print model
 
     # Y-hat Series
@@ -130,30 +147,26 @@ if __name__ == "__main__":
     Y = df_comb.loc[:, [
         configs[d_source][model_name]['target']
     ]]
-    print sum(Y[configs[d_source][model_name]['target']].isnull())
-    print "Y sum above"
 
     X = df_comb.loc[:, [
         x for x in df_comb.columns if x not in Y.columns
     ]]
     for c in X.columns:
         if sum(X[c].isnull()) > 0:
-            print c
+            raise Exception("Null value in exogenous variables")
 
     # X index
     X_idx = X.loc[:, idx_cols]
     X = X.loc[:, [x for x in X.columns if x not in idx_cols]]
-    print "Features:"
     print X.columns
-    print X.dtypes
+
 
     # X = calculate_vif_(X=X, thresh=configs[d_source][model_name]['vif_thresh'])
     # X.to_pickle(d_outpath + configs[d_source][model_name]['FS'] + '.pkl')
-    X = X.loc[:, [
-        'creditScore', 'origUPB', 'origLTV', 'origCLTV',
-        'loan_months_total', 'prev_defaults', 'UPB_max_diff', 'UPB_var'
-    ]]
-    print X.head()
+    # X = X.loc[:, [
+    #     'creditScore', 'origUPB', 'origLTV', 'origCLTV',
+    #     'loan_months_total', 'prev_defaults', 'UPB_max_diff', 'UPB_var'
+    # ]]
 
     # Split
     X_train, X_test, Y_train, Y_test = train_test_split(
@@ -165,29 +178,54 @@ if __name__ == "__main__":
             print c
 
     # Train and Test Model
-    print ":: Instantiating and training model ::"
-    model, df_result = logisticRegression_model(X_train=X_train,
-                                                Y_train=Y_train,
-                                                X_test=X_test,
-                                                Y_test=Y_test)
+    print "::Instantiating and Training model ::"
+    model, df_result = xgb_model(X_train=X_train,
+                                 Y_train=Y_train,
+                                 X_test=X_test,
+                                 Y_test=Y_test)
 
     # Send out
     pyplot.savefig(results_outpath + 'logRegr_coefficientViz.png')
     df_result.to_csv(results_outpath + 'logRegr_df_residuals.csv')
 
     # Print Stats
-    print "Percent Match"
-    print len(df_result.loc[(
-        df_result[configs[d_source][model_name]['target']] == df_result['Y_hat']
-    ), :])/len(df_result)
-    print "Percent Positive Match"
-    print len(df_result.loc[(
+    # Match
+    print "Total Observations:"
+    print "     {}".format(str(len(df_result)))
+    print "Total Matches"
+    total_matches = len(
+        df_result.loc[(df_result[configs[d_source][model_name]['target']] ==
+                       df_result['Y_hat']), :]
+    )
+    print total_matches
+
+    print "Default Matches"
+    def_matches = len(df_result.loc[(
         (df_result[configs[d_source][model_name]['target']] == 1)
         &
         (df_result['Y_hat'] == 1)
-    ), :])/len(df_result)
-    print "Percent False Positive"
-    print str(np.mean(df_result['falsePosPred']))
-    print "Percent False Negative"
-    print str(np.mean(df_result['falseNegPred']))
+    ), :])
+    print def_matches
 
+    print "No Default Matches"
+    no_def_matches = len(df_result.loc[(
+        (df_result[configs[d_source][model_name]['target']] == 0)
+        &
+        (df_result['Y_hat'] == 0)
+    ), :])
+    print no_def_matches
+
+    print "False Positives"
+    false_pos = len(df_result.loc[(
+        (df_result['Y_hat'] == 1)
+        &
+        (df_result[configs[d_source][model_name]['target']] == 0)
+    ), :])
+    print false_pos
+    print "False Negatives"
+    false_neg = len(df_result.loc[(
+        (df_result['Y_hat'] == 0)
+        &
+        (df_result[configs[d_source][model_name]['target']] == 1)
+    ), :])
+    print false_neg

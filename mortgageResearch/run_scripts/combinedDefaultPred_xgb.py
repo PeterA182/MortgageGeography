@@ -38,11 +38,11 @@ if not os.path.exists(data_path):
 
 # Order scripts into execution dictionary
 scripts = {
-    0: base_path + 'dataPrep/' + 'a_originationLoadPrep.py',
-    1: base_path + 'dataPrep/' + 'a_monthlyLoadPrep.py',
-    2: base_path + 'dataPrep/' + 'combinePreppedData.py',
+    # 0: base_path + 'dataPrep/' + 'a_originationLoadPrep.py',
+    # 1: base_path + 'dataPrep/' + 'a_monthlyLoadPrep.py',
+    # 2: base_path + 'dataPrep/' + 'combinePreppedData.py',
     3: base_path + 'featureEngineering/' + 'b_combinedFeatures.py',
-    4: base_path + 'model/' + 'comb_logisticRegression.py'
+    4: base_path + 'model/' + 'comb_xgb.py'
 }
 
 # Iteratively execute scripts for loadPrep, FE, model, residualanalysis

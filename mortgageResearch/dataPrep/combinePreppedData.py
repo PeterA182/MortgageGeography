@@ -48,7 +48,7 @@ if __name__ == "__main__":
     df_origination = pd.merge(
         df_origination,
         df_monthly,
-        how='left',
+        how='inner',
         on=['loanSeqNumber']
     )
     df_origination = df_origination.loc[

@@ -21,11 +21,6 @@ d_outpath = sys.argv[1]
 d_source = sys.argv[2]
 model_name = sys.argv[3]
 default_window_months = configs[d_source][model_name]['default_window_months']
-# d_outpath = '/Users/peteraltamura/Documents/GitHub/mortgageResearch/output/' \
-#             'combinedDefaultPred_logit/'
-# d_source = 'freddie'
-# model_name = 'comb_logisticRegression'
-# default_window_months = 3
 
 
 # Methods
@@ -53,33 +48,38 @@ def add_feature(add, all, metric):
 def add_target(df, all):
     """
     
-    :param add: 
+    :param df: 
     :param all: 
     :return: 
     """
+    print df.head()
+    print df.columns
 
-    # Aggregate and create target
-    df = df.groupby(
+    # Aggregate
+    tot = df.groupby(
         by=['loanSeqNumber'],
         as_index=False
     ).agg({'currLoanDelinqStatus': np.max})
-    df.loc[df['currLoanDelinqStatus'] > 0, 'currLoanDelinqStatus'] = 1
-    df.rename(columns={'currLoanDelinqStatus': 'default_in_window'},
-              inplace=True)
-
-    # Merge back to main table
-    pre_len = len(all)
-    all = pd.merge(
-        all,
-        df,
-        how='left',
-        on=['loanSeqNumber']
+    tot.rename(
+        columns={'currLoanDelinqStatus': 'target'},
+        inplace=True
     )
-    if len(all) != pre_len:
-        raise Exception("Merge of type \'left\' for target has added rows "
-                        "unexpectedly.")
 
-    return all
+    # Reset to 0, 1
+    print tot.head()
+    print tot.columns
+    tot.loc[:, 'default_in_window'] = 0
+    tot.loc[tot['target'] > 0, 'default_in_window'] = 1
+    tot.drop(labels=['target'], axis=1, inplace=True)
+
+    # Merge back
+    all_ret = pd.merge(
+        all,
+        tot,
+        how='left',
+        on='loanSeqNumber'
+    )
+    return all_ret
 
 
 if __name__ == "__main__":
@@ -90,30 +90,33 @@ if __name__ == "__main__":
     # Prep / Initial
 
     # Read in prepped monthly data
-    df_monthly = pd.read_pickle(
-        d_outpath + configs[d_source][model_name]['combined_filenames']['prepped'] + '.pkl'
+    df_comb = pd.read_pickle(
+        d_outpath + 
+        configs[d_source][model_name]['combined_filenames']['prepped'] + '.pkl'
     )
-    for c in df_monthly.columns:
-        if df_monthly[c].dtype not in [object, '<M8[ns]']:
-            df_monthly.loc[:, c] = df_monthly[c].astype(float)
-    df_monthly.loc[:, 'mthlyRepPeriod'] = \
-        pd.to_datetime(df_monthly['mthlyRepPeriod'])
+    for c in df_comb.columns:
+        if df_comb[c].dtype not in [object, '<M8[ns]']:
+            df_comb.loc[:, c] = df_comb[c].astype(float)
+        df_comb.loc[:, 'mthlyRepPeriod'] = \
+            pd.to_datetime(df_comb['mthlyRepPeriod'])
 
     #
     # Rank each month's observation for each loan
-    df_monthly.sort_values(
+    df_comb.sort_values(
         by=['loanSeqNumber', 'mthlyRepPeriod'],
         ascending=True,
         inplace=True
     )
-    df_monthly['mth_of_loan'] = df_monthly.groupby(
+    df_comb['mth_of_loan'] = df_comb.groupby(
         by=['loanSeqNumber'],
         as_index=True
     )['mthlyRepPeriod'].rank(method='min').astype(int)
 
     #
     # Set up table to append metrics to
-    df_loans = df_monthly.loc[:, ['loanSeqNumber']].drop_duplicates(inplace=False)
+    df_loans = df_comb.loc[:,
+        ['loanSeqNumber', 'creditScore'] + [x for x in df_comb.columns if x[:4] == 'orig']
+    ].drop_duplicates(inplace=False)
 
     #
     # ---- ---- ----      ---- ---- ----      ---- ---- ----
@@ -121,23 +124,23 @@ if __name__ == "__main__":
     # Add Target
 
     # Remove recent "x" number of observations to create predict "window"
-    df_monthly['loan_months_total'] = df_monthly.groupby(
+    df_comb['loan_months_total'] = df_comb.groupby(
         by=['loanSeqNumber'],
         as_index=False
     )['mth_of_loan'].transform(np.max)
     window_months_msk = (
-        df_monthly['mth_of_loan'] <
-        (df_monthly['loan_months_total'] -
+        df_comb['mth_of_loan'] <
+        (df_comb['loan_months_total'] -
          configs[d_source][model_name]['default_window_months'])
     )
 
     # Split into pre-prediction window and post-prediction window
     # chronologically
-    df_monthly = df_monthly.loc[window_months_msk, :]
-    df_monthly_target_window = df_monthly.loc[~window_months_msk, :]
+    df_comb_target_window = df_comb.loc[~window_months_msk, :]
+    df_comb = df_comb.loc[window_months_msk, :]
 
     # Add Target
-    df_loans = add_target(df=df_monthly_target_window, all=df_loans)
+    df_loans = add_target(df=df_comb_target_window, all=df_loans)
     
     #
     # ---- ---- ----      ---- ---- ----      ---- ---- ----
@@ -146,21 +149,21 @@ if __name__ == "__main__":
 
     # Feature: been in default before
     msk = (
-        df_monthly.groupby(['loanSeqNumber'])
+        df_comb.groupby(['loanSeqNumber'])
         ['currLoanDelinqStatus'].transform('max') > 0
     )
-    df_monthly.loc[:, 'prev_defaults'] = 0
-    df_monthly.loc[msk, 'prev_defaults'] = 1
-    add = df_monthly.groupby(['loanSeqNumber'], as_index=False).agg({'prev_defaults': np.max})
+    df_comb.loc[:, 'prev_defaults'] = 0
+    df_comb.loc[msk, 'prev_defaults'] = 1
+    add = df_comb.groupby(['loanSeqNumber'], as_index=False).agg({'prev_defaults': np.max})
     df_loans = add_feature(add=add, all=df_loans, metric='prev_defaults')
 
     # Feature: months spent in default before
-    add = df_monthly.groupby(['loanSeqNumber'], as_index=False).agg({'prev_defaults': np.sum})
+    add = df_comb.groupby(['loanSeqNumber'], as_index=False).agg({'prev_defaults': np.sum})
     add.rename(columns={'prev_defaults': 'prev_defaults_sum'}, inplace=True)
     df_loans = add_feature(add=add, all=df_loans, metric='prev_defaults_sum')
 
     # age of loan
-    add = df_monthly.groupby(
+    add = df_comb.groupby(
         by=['loanSeqNumber'],
         as_index=False
     ).agg({'loan_months_total': np.mean})
@@ -168,7 +171,7 @@ if __name__ == "__main__":
 
     # currUPB
     # Feature: currUPB variance between origination and max non-target month
-    add = df_monthly.groupby(
+    add = df_comb.groupby(
         by=['loanSeqNumber'],
         as_index=False
     ).agg({'currUPB': np.var})
@@ -176,7 +179,7 @@ if __name__ == "__main__":
     df_loans = add_feature(add=add, all=df_loans, metric='UPB_var')
 
     # Feature: currUPB max diff
-    add = df_monthly.groupby(
+    add = df_comb.groupby(
         by=['loanSeqNumber'],
         as_index=False
     ).agg({'currUPB': [np.max, np.min]})
@@ -189,18 +192,16 @@ if __name__ == "__main__":
 
 
     # UPB diff as function of time
+    
+    #
+    # Prep to Send back out
+    # ---- ---- ----
+    
+    # Remove all null observations in each columns
+    for c in df_loans.columns:
+        if sum(df_loans[c].isnull()) > 0:
+            df_loans = df_loans.loc[df_loans[c].notnull(), :]
 
-    # Add back to origination
-    df_origination = pd.read_pickle(
-        d_outpath +
-        configs[d_source][model_name]['origination_filenames']['prepped'] + '.pkl'
-    )
-    df_loans = pd.merge(
-        df_origination,
-        df_loans,
-        how='inner',
-        on=['loanSeqNumber']
-    )
     df_loans.to_pickle(
         d_outpath +
         configs[d_source][model_name]['combined_filenames']['FE'] + '.pkl'
