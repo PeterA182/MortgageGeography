@@ -23,28 +23,9 @@ model_name = sys.argv[3]
 default_window_months = configs[d_source][model_name]['default_window_months']
 
 
+#
+# ---- ---- ----
 # Methods
-def add_feature(add, all, metric):
-    """
-    
-    :param df: 
-    :return: 
-    """
-
-    pre_len = len(all)
-    all = pd.merge(
-        all,
-        add,
-        how='left',
-        on=['loanSeqNumber']
-    )
-    if len(all) != pre_len:
-        raise Exception("Merge of tye \'left\' has added rows unexpectedly "
-                        "for metrics {}".format(metric))
-
-    return all
-
-
 def add_target(df, all):
     """
     
@@ -52,8 +33,6 @@ def add_target(df, all):
     :param all: 
     :return: 
     """
-    print df.head()
-    print df.columns
 
     # Aggregate
     tot = df.groupby(
@@ -66,8 +45,6 @@ def add_target(df, all):
     )
 
     # Reset to 0, 1
-    print tot.head()
-    print tot.columns
     tot.loc[:, 'default_in_window'] = 0
     tot.loc[tot['target'] > 0, 'default_in_window'] = 1
     tot.drop(labels=['target'], axis=1, inplace=True)
@@ -75,11 +52,241 @@ def add_target(df, all):
     # Merge back
     all_ret = pd.merge(
         all,
-        tot,
+        tot[['loanSeqNumber', 'default_in_window']],
         how='left',
         on='loanSeqNumber'
     )
     return all_ret
+
+
+def add_loan_age(months_level, loan_level):
+    """
+
+    :param months_level: 
+    :param loan_level: 
+    :return: 
+    """
+    # age of loan
+    add = months_level.groupby(
+        by=['loanSeqNumber'],
+        as_index=False
+    ).agg({'loan_months_total': np.mean})
+    add = add.loc[:,
+          ['loanSeqNumber', 'loan_months_total']].drop_duplicates(
+        inplace=False
+    )
+
+    pre_len = len(loan_level)
+    loan_level = pd.merge(
+        loan_level,
+        add,
+        how='left',
+        on=['loanSeqNumber']
+    )
+    if len(loan_level) > pre_len:
+        raise Exception(
+            "Merge of type \'left\' has added rows unexpectedly."
+        )
+
+    return loan_level
+
+
+def add_prev_defaults(month_level, loan_level):
+    """
+
+    :param month_level: 
+    :param loan_level: 
+    :return: 
+    """
+
+    msk = (
+        month_level.groupby(['loanSeqNumber'])
+        ['currLoanDelinqStatus'].transform('max') > 0
+    )
+    month_level.loc[:, 'prev_defaults'] = 0
+    month_level.loc[msk, 'prev_defaults'] = 1
+    month_level = month_level.groupby(['loanSeqNumber'], as_index=False).agg(
+        {'prev_defaults': np.max}
+    )
+    pre_len =len(loan_level)
+    loan_level = pd.merge(
+        loan_level,
+        month_level,
+        how='left',
+        on=['loanSeqNumber']
+    )
+    if len(loan_level) > pre_len:
+        raise Exception("LATER")
+
+
+    # Feature: months spent in default before
+    add = month_level.groupby(['loanSeqNumber'], as_index=False).agg(
+        {'prev_defaults': np.sum})
+    add.rename(columns={'prev_defaults': 'prev_defaults_sum'}, inplace=True)
+
+    loan_level = pd.merge(
+        loan_level,
+        add,
+        how='left',
+        on=['loanSeqNumber']
+    )
+    if len(loan_level) > pre_len:
+        raise Exception("LATER")
+
+    return loan_level
+
+
+def add_upb_max_change_rate(month_level, loan_level):
+    """
+    Calculate the max rate of change in UPB during life of mortgage across all 
+    possible window sizes
+    
+    
+    PARAMETERS
+    ----------
+    month_level: DataFrame
+        contains monthly observations for each mortgage
+    loan_level: DataFramr
+        contains mortgage level observations for each mortgage
+    
+        
+    RETURNS
+    -------
+    loan_level DataFrame with metrics appended
+    """
+
+    # Get max number of months for any loan
+    #   (this -1 will serve as max rolling_avg look back)
+    month_level.sort_values(by=['loanSeqNumber', 'mthlyRepPeriod'],
+                            ascending=True,
+                            inplace=True)
+    month_level['max_months'] = month_level.groupby(
+        by=['loanSeqNumber'],
+        as_index=False
+    )['mthlyRepPeriod'].transform('count')
+
+    # Iterate
+    windows = range(1, np.max(month_level['max_months']))
+    for m in windows:
+        month_level.loc[:, 'max_upb_range_{}'.format(str(m))] = \
+            month_level.groupby('loanSeqNumber')['currUPB'].apply(
+                pd.rolling_max, m, min_periods=m
+            )
+        month_level.loc[:, 'min_upb_range_{}'.format(str(m))] = \
+            month_level.groupby('loanSeqNumber')['currUPB'].apply(
+                pd.rolling_min, m, min_periods=m
+            )
+        month_level.loc[:, 'max_upb_change_rate_{}'.format(str(m))] = ((
+            month_level['max_upb_range_{}'.format(str(m))] -
+            month_level['min_upb_range_{}'.format(str(m))]
+        ) / m)
+
+    # Aggregate to loan level to merge back
+    add = month_level.groupby(
+        by=['loanSeqNumber'],
+        as_index=False
+    ).agg({'max_upb_change_rate_{}'.format(str(m)): 'max' for m in windows})
+
+    # Merge back
+    loan_level = pd.merge(
+        loan_level,
+        add,
+        how='left',
+        on=['loanSeqNumber']
+    )
+
+    return loan_level
+
+
+def add_variability_measures(month_level, loan_level):
+    """
+    
+    :param month_level: 
+    :param loan_level: 
+    :return: 
+    """
+
+    # ---------
+    # IQR
+    # Percentile 75
+    add75 = month_level.groupby(
+        by=['loanSeqNumber'],
+        as_index=False
+    ).agg({'currUPB': lambda x: np.percentile(x, q=75)})
+    add75.rename(columns={'currUPB': 'pctl75'}, inplace=True)
+    add25 = month_level.groupby(
+        by=['loanSeqNumber'],
+        as_index=False
+    ).agg({'currUPB': lambda x: np.percentile(x, q=25)})
+    add25.rename(columns={'currUPB': 'pctl25'}, inplace=True)
+    pre_len = len(loan_level)
+    add = pd.merge(
+        add75,
+        add25,
+        how='left',
+        on=['loanSeqNumber']
+    )
+    if len(add) > pre_len:
+        raise Exception("LATER")
+
+    add['loan_IQR'] = (add['pctl75'] - add['pctl25'])
+
+    pre_len = len(loan_level)
+    loan_level = pd.merge(
+        loan_level,
+        add[['loanSeqNumber', 'loan_IQR']],
+        how='left',
+        on=['loanSeqNumber']
+    )
+    if len(loan_level) > pre_len:
+        raise Exception("Merge of type \'left\' has added rows.")
+
+    # ---------
+    # Range
+    month_level['max_UPB'] = month_level.groupby(
+        by=['loanSeqNumber'],
+        as_index=False
+    )['currUPB'].transform(np.max)
+    month_level['min_UPB'] = month_level.groupby(
+        by=['loanSeqNumber'],
+        as_index=False
+    )['currUPB'].transform(np.min)
+    month_level['loan_Range'] = (
+        month_level['max_UPB'] - month_level['min_UPB']
+    )
+    add = month_level.loc[:, ['loanSeqNumber', 'loan_Range', 'loan_IQR']].\
+        drop_duplicates(inplace=False)
+    pre_len  = len(loan_level)
+    loan_level = pd.merge(
+        loan_level,
+        add,
+        how='left',
+        on=['loanSeqNumber']
+    )
+    if len(loan_level) > pre_len:
+        raise Exception("Merge of type \'left\' has added rows unexpectedly")
+
+    # ---------
+    # Variance and STD
+    month_level['UPB_var'] = month_level.groupby(
+        by=['loanSeqNumber'],
+        as_index=False
+    )['currUPB'].transform(np.var)
+
+    add = month_level.loc[:, ['loanSeqNumber', 'UPB_var']]. \
+        drop_duplicates(inplace=False)
+    pre_len = len(loan_level)
+    loan_level = pd.merge(
+        loan_level,
+        add,
+        how='left',
+        on=['loanSeqNumber']
+    )
+    if len(loan_level) > pre_len:
+        raise Exception(
+            "Merge of type \'left\' has added rows unexpectedly")
+
+    return loan_level
 
 
 if __name__ == "__main__":
@@ -117,6 +324,7 @@ if __name__ == "__main__":
     df_loans = df_comb.loc[:,
         ['loanSeqNumber', 'creditScore'] + [x for x in df_comb.columns if x[:4] == 'orig']
     ].drop_duplicates(inplace=False)
+    assert len(df_loans) == len(set(df_loans.loanSeqNumber))
 
     #
     # ---- ---- ----      ---- ---- ----      ---- ---- ----
@@ -139,7 +347,7 @@ if __name__ == "__main__":
     df_comb_target_window = df_comb.loc[~window_months_msk, :]
     df_comb = df_comb.loc[window_months_msk, :]
 
-    # Add Target
+    # Target
     df_loans = add_target(df=df_comb_target_window, all=df_loans)
     
     #
@@ -148,44 +356,21 @@ if __name__ == "__main__":
     # Feature Engineering
 
     # Feature: been in default before
-    msk = (
-        df_comb.groupby(['loanSeqNumber'])
-        ['currLoanDelinqStatus'].transform('max') > 0
-    )
-    df_comb.loc[:, 'prev_defaults'] = 0
-    df_comb.loc[msk, 'prev_defaults'] = 1
-    add = df_comb.groupby(['loanSeqNumber'], as_index=False).agg({'prev_defaults': np.max})
-    df_loans = add_feature(add=add, all=df_loans, metric='prev_defaults')
+    df_loans = add_prev_defaults(month_level=df_comb,
+                                 loan_level=df_loans)
 
-    # Feature: months spent in default before
-    add = df_comb.groupby(['loanSeqNumber'], as_index=False).agg({'prev_defaults': np.sum})
-    add.rename(columns={'prev_defaults': 'prev_defaults_sum'}, inplace=True)
-    df_loans = add_feature(add=add, all=df_loans, metric='prev_defaults_sum')
+    # Feature: age of loan
+    df_loans = add_loan_age(months_level=df_comb,
+                            loan_level=df_loans)
 
-    # age of loan
-    add = df_comb.groupby(
-        by=['loanSeqNumber'],
-        as_index=False
-    ).agg({'loan_months_total': np.mean})
-    df_loans = add_feature(add=add, all=df_loans, metric='loan_months_total')
+    # Feature: currUPB Variability Measures
+    df_loans = add_variability_measures(month_level=df_comb,
+                                        loan_level=df_loans)
 
-    # currUPB
-    # Feature: currUPB variance between origination and max non-target month
-    add = df_comb.groupby(
-        by=['loanSeqNumber'],
-        as_index=False
-    ).agg({'currUPB': np.var})
-    add.rename(columns={'currUPB': 'UPB_var'}, inplace=True)
-    df_loans = add_feature(add=add, all=df_loans, metric='UPB_var')
+    # Feature: currUPB max rate of change
+    df_loans = add_upb_max_change_rate(month_level=df_comb,
+                                       loan_level=df_loans)
 
-    # Feature: currUPB max diff
-    add = df_comb.groupby(
-        by=['loanSeqNumber'],
-        as_index=False
-    ).agg({'currUPB': [np.max, np.min]})
-    add.columns = [x[1] if (x[1] and x[1] != '') else x[0] for x in add.columns]
-    add['UPB_max_diff'] = (add['amax'] - add['amin'])
-    df_loans = add_feature(add=add, all=df_loans, metric='UPB_max_diff')
 
     # Feature: LTV diff as function of time between origination and max
     # non-target month
