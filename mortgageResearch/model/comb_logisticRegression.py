@@ -127,6 +127,9 @@ if __name__ == "__main__":
     Y = df_comb.loc[:, [
         configs[d_source][model_name]['target']
     ]]
+    print sum(Y[configs[d_source][model_name]['target']].isnull())
+    print "Y sum above"
+
     X = df_comb.loc[:, [
         x for x in df_comb.columns if x not in Y.columns
     ]]
@@ -144,7 +147,7 @@ if __name__ == "__main__":
     # X = calculate_vif_(X=X, thresh=configs[d_source][model_name]['vif_thresh'])
     # X.to_pickle(d_outpath + configs[d_source][model_name]['FS'] + '.pkl')
     X = X.loc[:, [
-        'creditScore', 'currUPB', 'origUPB', 'origLTV', 'origCLTV',
+        'creditScore', 'origUPB', 'origLTV', 'origCLTV',
         'loan_months_total', 'prev_defaults', 'UPB_max_diff', 'UPB_var'
     ]]
     print X.head()

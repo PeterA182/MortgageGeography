@@ -47,6 +47,8 @@ def add_feature(add, all, metric):
         raise Exception("Merge of tye \'left\' has added rows unexpectedly "
                         "for metrics {}".format(metric))
 
+    return all
+
 
 def add_target(df, all):
     """
@@ -62,6 +64,8 @@ def add_target(df, all):
         as_index=False
     ).agg({'currLoanDelinqStatus': np.max})
     df.loc[df['currLoanDelinqStatus'] > 0, 'currLoanDelinqStatus'] = 1
+    df.rename(columns={'currLoanDelinqStatus': 'default_in_window'},
+              inplace=True)
 
     # Merge back to main table
     pre_len = len(all)
@@ -74,6 +78,8 @@ def add_target(df, all):
     if len(all) != pre_len:
         raise Exception("Merge of type \'left\' for target has added rows "
                         "unexpectedly.")
+
+    return all
 
 
 if __name__ == "__main__":
@@ -107,8 +113,7 @@ if __name__ == "__main__":
 
     #
     # Set up table to append metrics to
-    df_loans = df_monthly.loc[:, ['loanSeqNumber']].\
-        drop_duplicates(inplace=False)
+    df_loans = df_monthly.loc[:, ['loanSeqNumber']].drop_duplicates(inplace=False)
 
     #
     # ---- ---- ----      ---- ---- ----      ---- ---- ----
@@ -132,7 +137,7 @@ if __name__ == "__main__":
     df_monthly_target_window = df_monthly.loc[~window_months_msk, :]
 
     # Add Target
-    add_target(df=df_monthly_target_window, all=df_loans)
+    df_loans = add_target(df=df_monthly_target_window, all=df_loans)
     
     #
     # ---- ---- ----      ---- ---- ----      ---- ---- ----
@@ -147,19 +152,19 @@ if __name__ == "__main__":
     df_monthly.loc[:, 'prev_defaults'] = 0
     df_monthly.loc[msk, 'prev_defaults'] = 1
     add = df_monthly.groupby(['loanSeqNumber'], as_index=False).agg({'prev_defaults': np.max})
-    add_feature(add=add, all=df_loans, metric='prev_defaults')
+    df_loans = add_feature(add=add, all=df_loans, metric='prev_defaults')
 
     # Feature: months spent in default before
     add = df_monthly.groupby(['loanSeqNumber'], as_index=False).agg({'prev_defaults': np.sum})
     add.rename(columns={'prev_defaults': 'prev_defaults_sum'}, inplace=True)
-    add_feature(add=add, all=df_loans, metric='prev_defaults_sum')
+    df_loans = add_feature(add=add, all=df_loans, metric='prev_defaults_sum')
 
     # age of loan
     add = df_monthly.groupby(
         by=['loanSeqNumber'],
         as_index=False
     ).agg({'loan_months_total': np.mean})
-    add_feature(add=add, all=df_loans, metric='loan_months_total')
+    df_loans = add_feature(add=add, all=df_loans, metric='loan_months_total')
 
     # currUPB
     # Feature: currUPB variance between origination and max non-target month
@@ -168,7 +173,7 @@ if __name__ == "__main__":
         as_index=False
     ).agg({'currUPB': np.var})
     add.rename(columns={'currUPB': 'UPB_var'}, inplace=True)
-    add_feature(add=add, all=df_loans, metric='UPB_var')
+    df_loans = add_feature(add=add, all=df_loans, metric='UPB_var')
 
     # Feature: currUPB max diff
     add = df_monthly.groupby(
@@ -176,8 +181,8 @@ if __name__ == "__main__":
         as_index=False
     ).agg({'currUPB': [np.max, np.min]})
     add.columns = [x[1] if (x[1] and x[1] != '') else x[0] for x in add.columns]
-    add['UPD_diff'] = (add['amax'] - add['amin'])
-    add_feature(add=add, all=df_loans, metric='UPB_max_diff')
+    add['UPB_max_diff'] = (add['amax'] - add['amin'])
+    df_loans = add_feature(add=add, all=df_loans, metric='UPB_max_diff')
 
     # Feature: LTV diff as function of time between origination and max
     # non-target month
@@ -185,6 +190,17 @@ if __name__ == "__main__":
 
     # UPB diff as function of time
 
+    # Add back to origination
+    df_origination = pd.read_pickle(
+        d_outpath +
+        configs[d_source][model_name]['origination_filenames']['prepped'] + '.pkl'
+    )
+    df_loans = pd.merge(
+        df_origination,
+        df_loans,
+        how='inner',
+        on=['loanSeqNumber']
+    )
     df_loans.to_pickle(
         d_outpath +
         configs[d_source][model_name]['combined_filenames']['FE'] + '.pkl'
