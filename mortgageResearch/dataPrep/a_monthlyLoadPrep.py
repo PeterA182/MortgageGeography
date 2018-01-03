@@ -304,8 +304,8 @@ if __name__ == "__main__":
     # Final Check
     for c in [x for x in df_monthly.columns]:
         if sum(df_monthly[c].isnull()) > 0:
-            print c
-            print "     {} null observations".format(
+            print "         {}".format(str(c))
+            print "             {} null observations".format(
                 str(sum(df_monthly[c].isnull()))
             )
     # Send out CSV and Pickle
