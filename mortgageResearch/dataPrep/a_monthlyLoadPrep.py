@@ -5,6 +5,7 @@ import cPickle
 import pandas as pd
 import datetime as dt
 import numpy as np
+import matplotlib.pyplot as plt
 
 from string import zfill
 from sklearn.preprocessing import LabelEncoder
@@ -58,6 +59,26 @@ def update_log(action, log={}, export=False):
                       'Action': log.values()}).to_csv(d_outpath + 'log.csv')
 
 
+def plot_distrs(df, n_rows=3, n_cols=3):
+    df_dt = pd.DataFrame(df.dtypes).reset_index(inplace=False)
+    df_dt.columns = ['colName', 'colType']
+    df_dt.loc[:, 'colType'] = df_dt['colType'].astype(str)
+    cols = df_dt.loc[df_dt['colType'] == 'float64', :]
+    cols = list(cols['colName'])
+    groups = []
+    for i in range(0, len(cols), n_rows*n_cols):
+        groups.append(cols[i:i+n_cols*n_rows])
+
+    for group in groups:
+        fig = plt.figure()
+        for i, var_name in enumerate(group):
+            ax = fig.add_subplot(n_rows, n_cols, i + 1)
+            df[var_name].hist(bins=10, ax=ax)
+            ax.set_title(var_name)
+            fig.tight_layout()
+            fig.savefig(d_outpath + '{}_colGroupDistrs.png'.format(
+                str(groups.index(group))
+            ))
 
 
 if __name__ == "__main__":
@@ -316,6 +337,10 @@ if __name__ == "__main__":
         d_outpath +
         configs[d_source][model_name]['monthly_filenames']['prepped'] + '.pkl'
     )
+
+    # Send out Plot and Subplots of distributions for each col
+    plot_distrs(df=df_monthly)
+
     update_log(action='Finished',
                export=True)
 

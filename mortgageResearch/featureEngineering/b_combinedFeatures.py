@@ -254,7 +254,7 @@ def add_variability_measures(month_level, loan_level):
     month_level['loan_Range'] = (
         month_level['max_UPB'] - month_level['min_UPB']
     )
-    add = month_level.loc[:, ['loanSeqNumber', 'loan_Range', 'loan_IQR']].\
+    add = month_level.loc[:, ['loanSeqNumber', 'loan_Range']].\
         drop_duplicates(inplace=False)
     pre_len  = len(loan_level)
     loan_level = pd.merge(
@@ -349,7 +349,8 @@ if __name__ == "__main__":
 
     # Target
     df_loans = add_target(df=df_comb_target_window, all=df_loans)
-    
+    print len(df_loans)
+    print "Length loans after target"
     #
     # ---- ---- ----      ---- ---- ----      ---- ---- ----
     #
@@ -358,19 +359,26 @@ if __name__ == "__main__":
     # Feature: been in default before
     df_loans = add_prev_defaults(month_level=df_comb,
                                  loan_level=df_loans)
+    print len(df_loans)
+    print "Length loans after add_prev_defaults"
 
     # Feature: age of loan
     df_loans = add_loan_age(months_level=df_comb,
                             loan_level=df_loans)
+    print len(df_loans)
+    print "Length loans after age"
 
     # Feature: currUPB Variability Measures
     df_loans = add_variability_measures(month_level=df_comb,
                                         loan_level=df_loans)
+    print len(df_loans)
+    print "Length loans after variability"
 
     # Feature: currUPB max rate of change
     df_loans = add_upb_max_change_rate(month_level=df_comb,
                                        loan_level=df_loans)
-
+    print len(df_loans)
+    print "Length loans after upb_max"
 
     # Feature: LTV diff as function of time between origination and max
     # non-target month
@@ -384,9 +392,13 @@ if __name__ == "__main__":
     
     # Remove all null observations in each columns
     for c in df_loans.columns:
+        print c
         if sum(df_loans[c].isnull()) > 0:
+            print str(sum(df_loans[c].isnull())) + " Null Values"
             df_loans = df_loans.loc[df_loans[c].notnull(), :]
 
+    print len(df_loans)
+    print "Above length df_loans after all features"
     df_loans.to_pickle(
         d_outpath +
         configs[d_source][model_name]['combined_filenames']['FE'] + '.pkl'
